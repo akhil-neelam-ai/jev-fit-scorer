@@ -1,0 +1,9 @@
+{
+  "name": "jev-fit-scorer",
+  "version": "1.2.0",
+  "description": "Score job-posting fit against your resume with TypeSafe's Jev model. Chrome extension + CLI.",
+  "type": "module",
+  "license": "MIT",
+  "private": true,
+  "engines": { "node": ">=18" }
+}

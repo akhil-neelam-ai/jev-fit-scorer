@@ -1,0 +1,34 @@
+{
+  "action": {
+    "default_icon": {
+      "128": "icon128.png",
+      "16": "icon16.png",
+      "48": "icon48.png"
+    },
+    "default_popup": "popup.html",
+    "default_title": "Jev Fit Scorer"
+  },
+  "background": {
+    "service_worker": "background.js",
+    "type": "module"
+  },
+  "description": "Scores open job descriptions with TypeSafe's Jev model.",
+  "host_permissions": [
+    "https://api.typesafe.ai/*"
+  ],
+  "icons": {
+    "128": "icon128.png",
+    "16": "icon16.png",
+    "48": "icon48.png"
+  },
+  "manifest_version": 3,
+  "name": "Jev Fit Scorer",
+  "options_page": "options.html",
+  "permissions": [
+    "activeTab",
+    "scripting",
+    "storage",
+    "tabs"
+  ],
+  "version": "1.2.0"
+}

@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Jev Fit Scorer — Options</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body class="page">
+  <div class="card">
+    <h1>🔥 Jev Fit Scorer <span class="muted">— options</span></h1>
+    <p class="muted">Open a job description on Lenny's Jobs, then click the extension to score it with TypeSafe's Jev model.</p>
+
+    <label class="field">
+      <span class="label">TypeSafe API key</span>
+      <input type="password" id="apiKey" placeholder="sk-..." autocomplete="off" spellcheck="false">
+      <div class="row">
+        <button id="testKey" class="btn secondary">Test & save API key</button>
+        <span id="testResult" class="muted"></span>
+      </div>
+      <small class="muted">Get one at <b>console.typesafe.ai/settings/keys</b> (early access waitlist) or use the Netlify / Vercel AI Gateway.</small>
+    </label>
+
+    <label class="field">
+      <span class="label">Your resume <span class="muted">(pasted once, stored locally in this browser)</span></span>
+      <textarea id="resume" rows="10" placeholder="Paste your resume text here…"></textarea>
+    </label>
+
+    <label class="check">
+      <input type="checkbox" id="needsSponsorship" checked>
+      <span>I need US visa sponsorship <span class="muted">(adds a sponsorship-friendliness estimate to each score)</span></span>
+    </label>
+
+    <div class="row actions">
+      <button id="save" class="btn">Save</button>
+      <span id="saveResult" class="muted"></span>
+    </div>
+
+    <hr>
+    <h2>Why this is cheap</h2>
+    <p class="muted small">
+      Jev charges $0.042 per million input tokens and no output tokens. Full job
+      descriptions vary in length, so the popup reports the tokens used and estimated spend.
+    </p>
+    <p class="muted small">Nothing leaves your browser except the visible job description + your resume, sent to api.typesafe.ai for scoring.</p>
+  </div>
+  <script src="options.js"></script>
+</body>
+</html>

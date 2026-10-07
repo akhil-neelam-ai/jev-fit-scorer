@@ -1,0 +1,12 @@
+.DS_Store
+node_modules/
+dist/
+*.zip
+
+# Keys and personal data never belong in this repo.
+.env
+.env.*
+resume*.txt
+resume*.md
+*.resume.*
+eval/private/
