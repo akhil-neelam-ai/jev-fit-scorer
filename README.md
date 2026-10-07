@@ -20,7 +20,7 @@ Click the extension icon on a job posting and the popup shows:
 
 Works in Chrome and other Chromium browsers, including Comet, Edge, and Brave.
 
-1. Download the zip from the latest release and unzip it. You can also clone this repo.
+1. Download `jev-fit-scorer.zip` from the [latest release](https://github.com/akhil-neelam-ai/jev-fit-scorer/releases/latest) and unzip it. You can also clone this repo.
 2. Open `chrome://extensions`, turn on **Developer mode**, click **Load unpacked**, and pick the folder that holds `manifest.json`.
 3. Click the extension icon, then **Options**. Paste your API key and click **Test & save API key**.
 4. Paste your resume as plain text and click **Save**. Uncheck the visa box if you don't need sponsorship.
