@@ -10,11 +10,13 @@ It works on any job posting page, not only Lenny's Jobs. On Lenny's Jobs, click 
 
 Click the extension icon on a job posting and the popup shows:
 
-- A fit score out of 10, colored green (strong), amber (worth a look), or gray (weak)
-- Jev's confidence in that score
+- A fit score out of 10, calibrated to read like Lenny's own score
+- Lenny's colors: green at 7 and up, amber from 4 to 6, gray below 4
+- A recommendation: deprioritize, apply if interested, apply and tailor, or strongly apply
+- A six-part scorecard rating required qualifications, core work, role level, customer type, company stage, and domain
 - The single strongest factor in the fit, good or bad
 - How likely the employer sponsors US visas, if you ask for that
-- The time and cost of the call, or "Cached" if you already scored this job
+- Jev's confidence, plus the time and cost of the call, or "Cached" if you already scored this job
 
 ## Install
 
@@ -37,7 +39,7 @@ Jev charges $0.042 per million input tokens and nothing for output. A resume plu
 The same scoring runs from the command line. You need Node 18 or newer. There is nothing to install.
 
 ```bash
-export TYPESAFE_API_KEY=your-key
+export TYPESAFE_API_KEY=your-key   # or save the key in ~/.typesafe_api_key
 node cli.js --resume resume.txt --job job.txt --company Stripe
 ```
 
@@ -51,33 +53,48 @@ Add `--json` for machine-readable output. Add `--no-sponsorship` to skip the vis
 
 ## How the score works
 
-One request asks Jev three questions about the same resume and job. Jev answers each question on its own.
+One request asks Jev nine questions about the same resume and job. Jev answers each question on its own.
 
 | Question | Type | What comes back |
 | --- | --- | --- |
 | `fit` | Score from 0 to 4 | How well the resume matches the job, with a confidence |
-| `why` | Choice | The strongest factor in the fit, good or bad |
+| Six scorecard questions | Weak, moderate, or strong | One rating per dimension |
+| `why` | Choice | The scorecard dimension that is the strongest match or gap |
 | `visa` | Probability | How likely the job sponsors US visas (only if you ask) |
 
-For `fit`, Jev looks at five things. Does the role's level and scope match? Does the resume show the functional experience? Does it show the technical or industry background? Does it meet the stated requirements? Has the candidate worked with comparable users or scale?
+The rubric copies how Lenny's Jobs scores fit. We ran its "Am I a fit?" on 101 jobs and measured what drives its score. Its six-part scorecard explained 81% of the number. Required qualifications and core work carried the most weight. Industry domain barely counted. Work authorization, visa, and location showed up as caveats, not as reasons to score lower.
 
-Stated requirements count more than adjacent experience. Jev is told not to infer anything the resume doesn't show.
+Jev's rubric now weighs the same six things in the same order. It lowers the score for required experience the resume doesn't show. It doesn't lower it for eligibility questions the candidate can resolve, such as sponsorship or relocation.
 
-Lenny's Jobs shows fit out of 10, so the extension multiplies Jev's score by 2.5 and rounds. Jev's scores are probability-weighted and often fractional, so a 3.2 shows as 8/10.
+The number you see blends two estimates. One maps Jev's overall fit score onto Lenny's scale. The other adds up the six scorecard ratings with weights fit to Lenny's scores. The recommendation follows the number:
 
-| Jev score | Shows as | Meaning |
+| Score | Recommendation |
+| --- | --- |
+| 8 to 10 | Strongly apply |
+| 6 to 7 | Apply and tailor |
+| 4 to 5 | Apply if interested |
+| 1 to 3 | Deprioritize |
+
+## How close it gets to Lenny
+
+We scored 101 jobs with both. Each job's number below comes from a model fit on the other jobs, so no job graded its own answer.
+
+| | Before (×2.5) | Now |
 | --- | --- | --- |
-| 0 | 0/10 | No meaningful match. Skip it. |
-| 1 | 3/10 | Weak match |
-| 2 | 5/10 | Moderate match. Worth a look. |
-| 3 | 8/10 | Strong match. Apply soon. |
-| 4 | 10/10 | Exceptional match. Apply now. |
+| Average gap to Lenny's score | 1.60 points | 0.59 points |
+| Within 1 point of Lenny | 46 of 101 | 93 of 101 |
+| Same low, mid, or high band (Cohen's kappa) | 0.20 | 0.73 |
+| Rank agreement (Spearman) | 0.81 | 0.83 |
+
+All 101 jobs were scored against one MBA candidate's resume, so your gap may differ. Lenny never went above 8 for that resume, so scores above 8 are extrapolated. Lenny's Jobs is a reference point here, not the truth.
 
 ## Change the scoring
 
-All of the scoring lives in [`scoring.js`](scoring.js). It has no dependencies and runs in the browser and in Node. Edit the rubric or the questions there and both the extension and the CLI pick up the change.
+All of the scoring lives in [`scoring.js`](scoring.js). That covers the questions Jev answers, the calibration map, the scorecard weights, and the recommendation tiers. It has no dependencies and runs in the browser and in Node. Edit it and both the extension and the CLI pick up the change.
 
-Bump `SCORING_CACHE_VERSION` in the same file when you do. Cached scores are keyed on that version, so old scores won't stick around.
+Bump `SCORING_CACHE_VERSION` when you change a question. Cached scores are keyed on that version, so old scores won't stick around.
+
+The `eval/` folder holds the scripts behind the numbers above. `score-jev.mjs` scores a set of saved jobs. `report.mjs` compares the results with a reference score. `analyze-lenny.mjs` measures how a reference scorer weighs its scorecard. `compare-versions.mjs` cross-validates ways of turning Jev's answers into a 1 to 10 score. The job data itself isn't in this repo, because it includes a personal resume and job search.
 
 ## Privacy
 

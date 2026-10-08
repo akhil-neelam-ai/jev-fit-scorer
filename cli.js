@@ -2,24 +2,25 @@
 // Score one job description against your resume from the terminal.
 // Uses the same scoring.js the Chrome extension uses, so scores match.
 //
-//   export TYPESAFE_API_KEY=...            # never pass the key as a flag
+//   export TYPESAFE_API_KEY=...   # or put it in ~/.typesafe_api_key; never pass it as a flag
 //   node cli.js --resume resume.txt --job job.txt
 //   pbpaste | node cli.js --resume resume.txt --job -
 
 import { readFile } from "node:fs/promises";
+import { homedir } from "node:os";
 import { parseArgs } from "node:util";
 import {
-  FIT_CRITERIA,
-  WHY_CRITERIA,
+  DIMENSIONS,
+  displayScore,
   estimateCost,
-  scoreJob,
-  toTenPointScale
+  recommendationFor,
+  scoreJob
 } from "./scoring.js";
 
 const HELP = `Usage: node cli.js --resume <file> --job <file|-> [options]
 
 Scores how well a job fits your resume with TypeSafe's Jev model.
-Reads your API key from the TYPESAFE_API_KEY environment variable.
+Reads your API key from TYPESAFE_API_KEY, or from ~/.typesafe_api_key.
 
 Options:
   --resume <file>     Plain-text resume (required)
@@ -30,13 +31,6 @@ Options:
   --json              Print machine-readable JSON
   -h, --help          Show this help`;
 
-const WHY_LABELS = {
-  role_match: "role match",
-  seniority_scope: "seniority or scope",
-  technical_domain: "technical or domain background",
-  required_qualifications: "required qualifications",
-  operating_environment: "operating environment"
-};
 
 async function readStdin() {
   const chunks = [];
@@ -73,8 +67,9 @@ async function main() {
   }
   if (!args.resume || !args.job) fail(`--resume and --job are required.\n\n${HELP}`);
 
-  const apiKey = process.env.TYPESAFE_API_KEY;
-  if (!apiKey) fail("set TYPESAFE_API_KEY in your environment (get a key at console.typesafe.ai).");
+  const apiKey = process.env.TYPESAFE_API_KEY ||
+    (await readFile(`${homedir()}/.typesafe_api_key`, "utf8").catch(() => "")).trim();
+  if (!apiKey) fail("set TYPESAFE_API_KEY or create ~/.typesafe_api_key (get a key at console.typesafe.ai).");
 
   const resume = await readFile(args.resume, "utf8").catch(() => fail(`cannot read resume file: ${args.resume}`));
   const description = (args.job === "-"
@@ -97,10 +92,12 @@ async function main() {
     job
   }).catch((e) => fail(e.message));
 
+  const display = displayScore(result);
   const output = {
     title: job.title,
     company: job.company,
-    fitOutOf10: toTenPointScale(result.fit),
+    display,
+    recommendation: recommendationFor(display),
     ...result,
     estimatedCostUsd: estimateCost(result.inputTokens)
   };
@@ -111,22 +108,17 @@ async function main() {
   }
 
   const confidence = result.fitConfidence == null ? "n/a" : `${Math.round(result.fitConfidence * 100)}%`;
-  const label = result.fitLabel || FIT_CRITERIA[Math.round(result.fit)] || "";
   console.log(`${job.title}${job.company ? " at " + job.company : ""}`);
-  console.log(`  Fit          ${output.fitOutOf10}/10  ${label}`);
-  console.log(`               Jev ${result.fit.toFixed(2)} / 4, confidence ${confidence}`);
-  if (result.why) console.log(`  Main factor  ${WHY_LABELS[result.why] || result.why}`);
+  console.log(`  Fit          ${display}/10  ${output.recommendation}`);
+  console.log(`               Jev raw ${result.fit.toFixed(2)} / 4, confidence ${confidence}`);
+  if (result.why) console.log(`  Main factor  ${DIMENSIONS[result.why]?.label.toLowerCase() || result.why}`);
+  const rows = Object.entries(DIMENSIONS).filter(([key]) => result.scorecard?.[key]);
+  rows.forEach(([key, d], i) => console.log(`  ${i === 0 ? "Scorecard   " : "            "} ${d.label.padEnd(24)} ${result.scorecard[key].label}`));
   if (result.visa != null) console.log(`  Sponsorship  ${Math.round(result.visa * 100)}% likely`);
   console.log(
     `  Cost         ${result.inputTokens.toLocaleString("en-US")} input tokens, ` +
       `$${output.estimatedCostUsd.toFixed(5)}, ${result.elapsedMs} ms`
   );
-}
-
-// WHY_CRITERIA is imported so a renamed choice fails loudly here instead of
-// printing a raw key: every label must map to a choice Jev can return.
-for (const key of Object.keys(WHY_LABELS)) {
-  if (!(key in WHY_CRITERIA)) fail(`WHY_LABELS has "${key}" but scoring.js does not.`);
 }
 
 main();

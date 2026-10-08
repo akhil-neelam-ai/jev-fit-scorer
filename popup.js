@@ -1,4 +1,4 @@
-import { estimateCost, toTenPointScale } from "./scoring.js";
+import { DIMENSIONS, displayScore, estimateCost, recommendationFor } from "./scoring.js";
 
 let currentJob = null;
 
@@ -9,10 +9,6 @@ function formatCost(inputTokens) {
 
 function formatConfidence(confidence) {
   return Number.isFinite(confidence) ? `${Math.round(confidence * 100)}%` : "–";
-}
-
-function displayFitLabel(label) {
-  return (label || "Fit score").split("—")[0].trim().replace(/\s+match$/i, "");
 }
 
 function setJobState({ name, status, result, retry = false }) {
@@ -27,29 +23,42 @@ function setJobState({ name, status, result, retry = false }) {
   }
 
   resultEl.hidden = false;
-  const comparableScore = toTenPointScale(result.fit);
-  document.getElementById("jobScore").textContent = `Fit score ${comparableScore}/10`;
-  document.getElementById("jobScore").style.color = scoreColor(result.fit);
-  document.getElementById("jobScoreLabel").textContent = displayFitLabel(result.fitLabel);
+  const score = displayScore(result);
+  document.getElementById("jobScore").textContent = `Fit score ${score}/10`;
+  document.getElementById("jobScore").style.color = scoreColor(score);
+  document.getElementById("jobScoreLabel").textContent = recommendationFor(score);
+  renderScorecard(result.scorecard);
   document.getElementById("jobConfidence").textContent = formatConfidence(result.fitConfidence);
   document.getElementById("jobSpeed").textContent = result.cached ? "Cached" : formatDuration(result.elapsedMs).replace("Scored in ", "");
   document.getElementById("jobCost").textContent = formatCost(result.inputTokens);
 }
 
-function scoreColor(fit) {
-  if (fit >= 3) return "#16a34a";
-  if (fit >= 2) return "#d97706";
+// Same color bands as Lenny's display: 7 and up, 4 to 6, below 4.
+function scoreColor(score) {
+  if (score >= 7) return "#16a34a";
+  if (score >= 4) return "#d97706";
   return "#6b7280";
 }
 
 function strongestFactor(choice) {
-  return {
-    role_match: "Main factor: role match",
-    seniority_scope: "Main factor: seniority or scope",
-    technical_domain: "Main factor: technical or domain background",
-    required_qualifications: "Main factor: required qualifications",
-    operating_environment: "Main factor: operating environment"
-  }[choice] || "Based on the visible job description.";
+  const dimension = DIMENSIONS[choice];
+  return dimension ? `Main factor: ${dimension.label.toLowerCase()}` : "Based on the visible job description.";
+}
+
+// Jev's six-dimension scorecard, in Lenny's order of importance.
+function renderScorecard(scorecard) {
+  const el = document.getElementById("jobScorecard");
+  el.replaceChildren();
+  const rows = Object.entries(DIMENSIONS).filter(([key]) => scorecard?.[key]);
+  el.hidden = rows.length === 0;
+  for (const [key, dimension] of rows) {
+    const dt = document.createElement("dt");
+    dt.textContent = dimension.label;
+    const dd = document.createElement("dd");
+    dd.textContent = scorecard[key].label;
+    dd.className = scorecard[key].label.toLowerCase();
+    el.append(dt, dd);
+  }
 }
 
 function formatDuration(milliseconds) {
