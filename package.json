@@ -7,5 +7,9 @@
   "private": true,
   "engines": {
     "node": ">=18"
+  },
+  "scripts": {
+    "test": "node test/display.test.mjs && node test/worker.test.mjs",
+    "test:browser": "node test/browser.test.mjs"
   }
 }
