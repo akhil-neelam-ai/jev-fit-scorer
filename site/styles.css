@@ -108,12 +108,12 @@ section.band.tinted { background: var(--tint); border-top: 0; }
 /* Fit split bar */
 .split { display: flex; height: 64px; gap: 3px; border-radius: 14px; overflow: hidden; }
 .split > div { display: flex; align-items: center; padding-inline: 14px; color: #fff; font-weight: 700; font-family: var(--display); font-size: 1.25rem; min-width: 0; white-space: nowrap; }
-.split .poor { background: #9ca3af; flex: 29; }
+.split .poor { background: #6b7280; flex: 29; }
 .split .medium { background: var(--amber); flex: 59; }
 .split .strong-fit { background: var(--good); flex: 13; justify-content: center; padding-inline: 0; }
 .split-legend { display: flex; flex-wrap: wrap; gap: 8px 28px; margin-top: 14px; font-size: 0.95rem; color: var(--ink-2); }
 .split-legend span::before { content: ""; display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 8px; background: currentColor; vertical-align: 0; }
-.split-legend .k-poor::before { background: #9ca3af; }
+.split-legend .k-poor::before { background: #6b7280; }
 .split-legend .k-medium::before { background: var(--amber); }
 .split-legend .k-strong::before { background: var(--good); }
 .punch { margin-top: 36px; font-family: var(--display); font-size: clamp(1.4rem, 3vw, 1.9rem); font-weight: 700; letter-spacing: -0.015em; max-width: 30ch; }
