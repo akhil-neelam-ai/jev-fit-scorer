@@ -59,9 +59,11 @@ const PAGES = {
     `<iframe src="https://example.com/frame?from=greenhouse.io"></iframe></main>`
   ),
   // A custom career site, like TikTok's: no main, no article, no known container,
-  // no JobPosting data. Its section headings give it away.
+  // no JobPosting data. Its section headings give it away. Its icons are
+  // aria-hidden SVGs, like most real sites' icons.
   "custom-career-site": page(
-    `<div class="top"><span>Locations</span><span>Blog</span></div><div class="detail"><h1>Machine Learning Engineer</h1>` +
+    `<div class="top"><svg aria-hidden="true" width="16" height="16"><path d="M0 0h16v16H0z"/></svg>` +
+    `<span>Locations</span><span>Blog</span></div><div class="detail"><h1>Machine Learning Engineer</h1>` +
     `<div class="meta">San Jose | Regular | Job ID: A104740</div><div class="title-bar">Responsibilities</div>` +
     `<div>About the team</div><div>${ABOUT}</div></div>`
   ),
@@ -77,7 +79,14 @@ const PAGES = {
     `<h2>Benefits</h2><p>Apply for a card with travel rewards.</p><p>${ABOUT}</p></main>`
   ),
   // No job signs in the page itself, only in its address.
-  "plain": page(`<main><h1>Platform Engineer</h1><p>${ABOUT}</p></main>`)
+  "plain": page(`<main><h1>Platform Engineer</h1><p>${ABOUT}</p></main>`),
+  // A product page with a mockup of a job posting, like this extension's own landing page.
+  // The headings sit inside illustrations, so they don't count.
+  "mockup-page": page(
+    `<main><h1>Know if a job fits before you apply.</h1><p>${ABOUT}</p>` +
+    `<div class="mock" aria-hidden="true"><p>About the role</p><p>What you'll need</p></div>` +
+    `<div class="mock" role="img" aria-label="A browser window"><p>Responsibilities</p><p>Qualifications</p></div></main>`
+  )
 };
 
 const server = await serve((path) => {
@@ -131,6 +140,7 @@ try {
   check("a bank page isn't taken for a job posting", (await extract("bank")).looksLikeJob === false);
   check("a page with no job signs isn't a job posting", (await extract("plain")).looksLikeJob === false);
   check("a /careers/ address marks a job posting", (await extract("plain", "", "careers")).looksLikeJob === true);
+  check("headings inside a mockup don't make a job posting", (await extract("mockup-page")).looksLikeJob === false);
 
   // 5b. Workday's list-and-detail view: just the posting, under its own title.
   job = await extract("workday-split");

@@ -95,6 +95,15 @@ export function extractOpenJobPage() {
   const jobSites = /(^|\.)(greenhouse\.io|lever\.co|ashbyhq\.com|myworkdayjobs\.com|workable\.com|smartrecruiters\.com|jobvite\.com|icims\.com|bamboohr\.com|recruitee\.com|breezy\.hr|teamtailor\.com|indeed\.com|glassdoor\.com|ziprecruiter\.com|wellfound\.com|builtin\.com|dice\.com|simplify\.jobs)$/;
   const jobPath = /\/(jobs?|careers?|positions?|openings?|postings?|vacanc(y|ies)|requisitions?)(\/|$)/i;
   const sectionHeading = /^(about (the|this) (role|job|position|team|opportunity)|(key |your |main |primary |core )?(responsibilities|duties)|((minimum|basic|preferred|required|additional) )?qualifications|(job )?requirements|what you('|’)ll (do|bring|need|work on)|what you will (do|bring|need|work on)|what we('|’)re looking for|what we are looking for|who you are|job (description|summary|details)|role overview|nice to haves?)\s*:?$/i;
+  // A heading counts only in the page's own text. Lines inside illustrations
+  // (aria-hidden or role="img"), such as a mockup of a job page on this
+  // extension's own landing page, don't make a page a job posting. SVG icons
+  // are often aria-hidden and have no innerText.
+  const lines = (element) => (element.innerText ?? "").split("\n").map((line) => line.trim());
+  const illustrated = new Set(
+    Array.from(document.querySelectorAll("[aria-hidden='true'], [role='img']")).filter(isVisible).flatMap(lines)
+  );
+  const hasJobHeading = lines(document.body).some((line) => sectionHeading.test(line) && !illustrated.has(line));
   const looksLikeJob =
     Array.from(document.querySelectorAll("script[type='application/ld+json']"))
       .some((script) => script.textContent.includes("JobPosting")) ||
@@ -103,7 +112,7 @@ export function extractOpenJobPage() {
     jobSites.test(location.hostname) ||
     (/(^|\.)linkedin\.com$/.test(location.hostname) && location.pathname.startsWith("/jobs")) ||
     jobPath.test(location.pathname) ||
-    document.body.innerText.split("\n").some((line) => sectionHeading.test(line.trim()));
+    hasJobHeading;
 
   // Many career pages show the posting in a frame from an applicant tracking
   // system, which this function can't read. The popup offers to open it.
