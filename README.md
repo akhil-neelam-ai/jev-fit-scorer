@@ -8,9 +8,9 @@ It works on any job posting page.
 
 ## How it scores fit
 
-Click the extension icon on a job posting. It reads the description and sends it to Jev, TypeSafe's decision model, along with your resume. Jev returns typed answers with probabilities instead of writing text, so each score costs a fraction of a cent.
+Click the extension icon on a job posting. It reads the description and sends it, with your resume, to a decision model. A decision model answers typed questions with probabilities instead of writing text, so each score costs a fraction of a cent. Today the extension uses TypeSafe's Jev, with your own API key.
 
-One request asks Jev nine questions about the same resume and job. Jev answers each question on its own.
+One request asks the model nine questions about the same resume and job. It answers each question on its own.
 
 | Question | Type | What comes back |
 | --- | --- | --- |
@@ -25,8 +25,8 @@ The popup turns those answers into:
 - A recommendation that follows the score
 - A six-part scorecard rating required qualifications, core work, role level, customer type, company stage, and domain
 - The single strongest factor in the fit, good or bad
-- How likely the employer sponsors US visas. This is on by default. Turn it off in Options if you don't need sponsorship.
-- Jev's confidence, plus the time and cost of the call, or "Cached" if you already scored this job
+- How likely the employer sponsors US visas. This is on by default. Turn it off in Options if you don't need sponsorship. The fit score is the same either way.
+- The model's confidence, plus the time and cost of the call, or "Cached" if you already scored this job
 
 | Score | Recommendation |
 | --- | --- |
@@ -37,18 +37,18 @@ The popup turns those answers into:
 
 ## How we built the score
 
-A fit score needs a reference point. We used the "Am I a fit?" analysis on [Lenny's Jobs](https://www.lennysjobs.com/), which writes a full fit review for one job at a time. We ran it and our scorer on the same 101 postings, against the same resume.
+A fit score needed a reference point. We used the "Am I a fit?" analysis on [Lenny's Jobs](https://www.lennysjobs.com/), which writes a full fit review for one job at a time. We ran it and our scorer on the same 101 postings, against the same resume.
 
 Lenny's review comes with a six-part scorecard, and its ratings explained 81% of its score. Required qualifications and core work carried the most weight. Industry domain barely counted. Work authorization, visa, and location showed up as caveats, not as reasons to score lower.
 
 We built our rubric to weigh the same six things in the same order. It lowers the score for required experience the resume doesn't show. It doesn't lower it for questions you can resolve, such as sponsorship or relocation. The number you see blends Jev's overall fit score with its six scorecard ratings, both mapped onto Lenny's scale.
 
-Here's how closely our score tracks Lenny's on those 101 jobs:
+Here's how closely our score tracks Lenny's on those 101 jobs. Both score jobs from 1 to 10.
 
 | | |
 | --- | --- |
 | Same score as Lenny | 50 of 101 |
-| Within 1 point of Lenny | 93 of 101 |
+| Same score or 1 point off | 93 of 101 |
 | Average difference | 0.6 points |
 
 We measured these on jobs the scorer wasn't tuned on. All 101 jobs were scored against one resume, so your results may differ. Lenny never went above 8 for that resume, so scores above 8 rest on less evidence. Lenny's Jobs is a reference point here, not the truth.
@@ -63,38 +63,11 @@ Works in Chrome and other Chromium browsers, including Comet, Edge, and Brave.
 4. Paste your resume as plain text and click **Save**. Uncheck the visa box if you don't need sponsorship.
 5. Open a job posting and click the extension icon.
 
-## Get a Jev key
+## Get an API key
 
-You need a TypeSafe API key. Create one at [console.typesafe.ai](https://console.typesafe.ai) on the API Keys page.
+Today the extension works with TypeSafe's Jev. Create an API key at [console.typesafe.ai](https://console.typesafe.ai) on the API Keys page.
 
 Jev charges $0.042 per million input tokens and nothing for output. A resume plus a full job description usually runs a few thousand tokens.
-
-## Score from the terminal
-
-The same scoring runs from the command line. You need Node 18 or newer. There is nothing to install.
-
-```bash
-export TYPESAFE_API_KEY=your-key   # or save the key in ~/.typesafe_api_key
-node cli.js --resume resume.txt --job job.txt --company Stripe
-```
-
-Copied a job description? Pipe it in:
-
-```bash
-pbpaste | node cli.js --resume resume.txt --job -
-```
-
-Add `--json` for machine-readable output. Add `--no-sponsorship` to skip the visa question. Run `node cli.js --help` for every option.
-
-## Change the scoring
-
-All of the scoring lives in [`scoring.js`](scoring.js). That covers the questions Jev answers, the calibration map, the scorecard weights, and the recommendation tiers. It has no dependencies and runs in the browser and in Node. Edit it and both the extension and the CLI pick up the change.
-
-Bump `SCORING_CACHE_VERSION` when you change a question. Cached scores are keyed on that version, so old scores won't stick around.
-
-Run `npm test` before you send a change. It checks the score math and the extension's background worker against a fake Jev API. `npm run test:browser` loads the extension in Chromium. Set `CHROME_BIN` to a Chromium or Chrome for Testing binary first, since regular Chrome won't load test extensions.
-
-The `eval/` folder holds the scripts behind the numbers above. `score-jev.mjs` scores a set of saved jobs. `report.mjs` compares the results with a reference score. `analyze-lenny.mjs` measures how a reference scorer weighs its scorecard. `compare-versions.mjs` cross-validates ways of turning Jev's answers into a 1 to 10 score. The job data itself isn't in this repo, because it includes a personal resume and job search.
 
 ## Privacy
 
@@ -115,7 +88,12 @@ This project isn't affiliated with Lenny's Jobs, TrueUp, or TypeSafe.
 ## What's next
 
 - The Chrome Web Store, so you can install it without Developer mode.
+- Support for other decision models, with your own API key.
 - A small open decision model, trained with Unsloth for this one job, that you can run yourself.
+
+## For developers
+
+The scoring logic, tests, command-line tool, and evaluation scripts are covered in [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## License
 
