@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://worth-applying.vercel.app/sitemap.xml
