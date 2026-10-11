@@ -13,9 +13,17 @@
 export const JEV_ENDPOINT = "https://api.typesafe.ai/v1/systemone";
 export const JEV_MODEL = "jev-latest";
 
+// How long Jev gets to answer before the call is dropped. Calls usually take
+// about a second.
+export const JEV_TIMEOUT_MS = 20000;
+
 // Bump when anything below changes the meaning of a cached score. The version
 // is part of the cache key, so old entries fall out instead of going stale.
-export const SCORING_CACHE_VERSION = 5;
+// Version 6 kept the version 5 rubric and cut the job down to four fields.
+export const SCORING_CACHE_VERSION = 6;
+
+// Longer job descriptions are cut to this many characters before scoring.
+export const MAX_DESCRIPTION_CHARS = 60000;
 
 // TypeSafe's published input price. Jev returns no output tokens.
 export const COST_PER_MTOK = 0.042;
@@ -82,18 +90,7 @@ export const WHY_CRITERIA = Object.fromEntries(
   Object.entries(DIMENSIONS).map(([key, d]) => [key, `${d.label} is the strongest match or gap`])
 );
 
-const JOB_FIELDS = [
-  "title",
-  "company",
-  "location",
-  "tagline",
-  "tags",
-  "salary",
-  "posted",
-  "meta",
-  "description",
-  "pageUrl"
-];
+const JOB_FIELDS = ["title", "company", "description", "pageUrl"];
 
 // djb2 — cheap stable hash for cache keys.
 export function hashKey(str) {
@@ -104,9 +101,12 @@ export function hashKey(str) {
   return "h" + h.toString(36);
 }
 
+// The job exactly as it is scored. The cache key and the request both read
+// this, so a cut description can't produce a key for text Jev never saw.
 function normalizeJob(job) {
   const out = {};
-  for (const field of JOB_FIELDS) out[field] = job?.[field] || "";
+  for (const field of JOB_FIELDS) out[field] = String(job?.[field] || "");
+  out.description = out.description.slice(0, MAX_DESCRIPTION_CHARS);
   return out;
 }
 
@@ -126,15 +126,10 @@ export function cacheKeyFor({ resume, needsSponsorship, job }) {
 }
 
 export function buildState({ resume, job }) {
-  const lines = ["CANDIDATE RESUME:", (resume || "").trim(), "", "JOB:"];
-  lines.push(`${job.title} at ${job.company}${job.location ? " — " + job.location : ""}`);
-  if (job.tagline) lines.push(job.tagline);
-  if (job.tags) lines.push("Skills/tags: " + job.tags);
-  if (job.salary) lines.push("Salary: " + job.salary);
-  if (job.meta) lines.push("Company info: " + job.meta);
-  if (job.posted) lines.push("Posted: " + job.posted);
-  if (job.pageUrl) lines.push("Source: " + job.pageUrl);
-  if (job.description) lines.push("FULL JOB DESCRIPTION:\n" + job.description);
+  const { title, company, description, pageUrl } = normalizeJob(job);
+  const lines = ["CANDIDATE RESUME:", (resume || "").trim(), "", "JOB:", `${title} at ${company}`];
+  if (pageUrl) lines.push("Source: " + pageUrl);
+  if (description) lines.push("FULL JOB DESCRIPTION:\n" + description);
   return lines.join("\n");
 }
 
@@ -185,14 +180,17 @@ export function buildQuestions({ needsSponsorship }) {
   return questions;
 }
 
-export async function callJev({ state, questions, apiKey, fetchImpl = fetch }) {
+// A call that runs past timeoutMs rejects with a TimeoutError. The signal also
+// covers reading the body.
+export async function callJev({ state, questions, apiKey, fetchImpl = fetch, timeoutMs = JEV_TIMEOUT_MS }) {
   const res = await fetchImpl(JEV_ENDPOINT, {
     method: "POST",
     headers: {
       Authorization: "Bearer " + apiKey,
       "Content-Type": "application/json"
     },
-    body: JSON.stringify({ state, model: JEV_MODEL, questions })
+    body: JSON.stringify({ state, model: JEV_MODEL, questions }),
+    signal: AbortSignal.timeout(timeoutMs)
   });
   if (!res.ok) {
     const body = await res.text().catch(() => "");
@@ -243,23 +241,15 @@ export function parseJevResponse(data, { elapsedMs = null } = {}) {
 
 // Score one job. No caching, no queueing: callers own those.
 export async function scoreJob({ apiKey, resume, needsSponsorship, job, fetchImpl }) {
-  if (!apiKey) throw new Error("No API key set — open the extension options to add it.");
-  if (!(resume || "").trim()) throw new Error("No resume saved — open the extension options to paste it.");
+  if (!apiKey) throw new Error("No API key provided.");
+  if (!(resume || "").trim()) throw new Error("No resume text provided.");
 
   const state = buildState({ resume, job });
   const questions = buildQuestions({ needsSponsorship });
   const startedAt = performance.now();
   const data = await callJev({ state, questions, apiKey, fetchImpl });
   const elapsedMs = Math.round(performance.now() - startedAt);
-  const usage = data.usage || {};
-  try {
-    return { result: parseJevResponse(data, { elapsedMs }), usage };
-  } catch (e) {
-    // The call succeeded and was billed even though the answer is unusable.
-    // Attach usage so callers can still count the tokens.
-    e.usage = usage;
-    throw e;
-  }
+  return { result: parseJevResponse(data, { elapsedMs }), usage: data.usage || {} };
 }
 
 // ---------- Display: Jev's answers as a 1-10 score comparable to Lenny's ----------
@@ -336,6 +326,25 @@ export function displayScore(result) {
 
 export function recommendationFor(score) {
   return RECOMMENDATIONS.find((r) => score >= r.min)?.label || RECOMMENDATIONS[RECOMMENDATIONS.length - 1].label;
+}
+
+// The score's color band, as Lenny's display draws it: 7 and up, 4 to 6, below 4.
+export function scoreBand(score) {
+  if (score >= 7) return "high";
+  if (score >= 4) return "mid";
+  return "low";
+}
+
+// The visa estimate as a percent and a word. The bands use the rounded
+// percent, so "60%" never reads "Unclear". The tone names the scorecard level
+// whose color it shares. Returns null when there's no estimate, which happens
+// when the user turned it off.
+export function visaBand(visa) {
+  if (!Number.isFinite(visa)) return null;
+  const percent = Math.round(visa * 100);
+  if (percent >= 60) return { percent, label: "Likely", tone: "strong" };
+  if (percent >= 30) return { percent, label: "Unclear", tone: "moderate" };
+  return { percent, label: "Unlikely", tone: "weak" };
 }
 
 // The original display, kept for reports on version-4 results: Jev's 0-4

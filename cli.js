@@ -14,7 +14,8 @@ import {
   displayScore,
   estimateCost,
   recommendationFor,
-  scoreJob
+  scoreJob,
+  visaBand
 } from "./scoring.js";
 
 const HELP = `Usage: node cli.js --resume <file> --job <file|-> [options]
@@ -72,6 +73,7 @@ async function main() {
   if (!apiKey) fail("set TYPESAFE_API_KEY or create ~/.typesafe_api_key (get a key at console.typesafe.ai).");
 
   const resume = await readFile(args.resume, "utf8").catch(() => fail(`cannot read resume file: ${args.resume}`));
+  if (!resume.trim()) fail(`the resume file is empty: ${args.resume}`);
   const description = (args.job === "-"
     ? await readStdin()
     : await readFile(args.job, "utf8").catch(() => fail(`cannot read job file: ${args.job}`))
@@ -82,7 +84,7 @@ async function main() {
   const job = {
     title: (args.title || firstLine).trim().slice(0, 120),
     company: (args.company || "").trim(),
-    description: description.slice(0, 60000)
+    description
   };
 
   const { result } = await scoreJob({
@@ -93,12 +95,15 @@ async function main() {
   }).catch((e) => fail(e.message));
 
   const display = displayScore(result);
+  const visa = visaBand(result.visa);
   const output = {
     title: job.title,
     company: job.company,
     display,
     recommendation: recommendationFor(display),
     ...result,
+    visaPercent: visa?.percent ?? null,
+    visaLabel: visa?.label ?? null,
     estimatedCostUsd: estimateCost(result.inputTokens)
   };
 
@@ -114,7 +119,7 @@ async function main() {
   if (result.why) console.log(`  Main factor  ${DIMENSIONS[result.why]?.label.toLowerCase() || result.why}`);
   const rows = Object.entries(DIMENSIONS).filter(([key]) => result.scorecard?.[key]);
   rows.forEach(([key, d], i) => console.log(`  ${i === 0 ? "Scorecard   " : "            "} ${d.label.padEnd(24)} ${result.scorecard[key].label}`));
-  if (result.visa != null) console.log(`  Sponsorship  ${Math.round(result.visa * 100)}% likely`);
+  if (visa) console.log(`  Sponsorship  ${visa.label} · ${visa.percent}%`);
   console.log(
     `  Cost         ${result.inputTokens.toLocaleString("en-US")} input tokens, ` +
       `$${output.estimatedCostUsd.toFixed(5)}, ${result.elapsedMs} ms`

@@ -4,10 +4,16 @@
   --card: #ffffff;
   --ink: #1f2937;
   --muted: #6b7280;
+  --muted-dark: #4b5563; /* muted text on the warm card, where --muted is too light */
   --accent: #f97316;
-  --accent-dark: #ea580c;
+  --accent-dark: #c2410c; /* orange text and focus rings, 4.5:1 or better on --bg */
   --line: #e5e7eb;
+  --warm-line: #fed7aa;
 }
+
+/* Without this, any rule that sets display (like .btn) overrides the hidden attribute. */
+[hidden] { display: none !important; }
+:focus-visible { outline: 2px solid var(--accent-dark); outline-offset: 2px; }
 
 body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; color: var(--ink); margin: 0; }
 .page { background: var(--bg); padding: 32px 16px; }
@@ -23,33 +29,41 @@ textarea { resize: vertical; }
 .check { display: flex; gap: 10px; align-items: flex-start; margin: 12px 0; font-size: 14px; cursor: pointer; }
 .check input { margin-top: 3px; }
 .row { display: flex; gap: 10px; align-items: center; margin-top: 10px; flex-wrap: wrap; }
-.btn { background: var(--accent); color: #fff; border: none; border-radius: 10px; padding: 10px 18px; font-size: 14px; font-weight: 600; cursor: pointer; text-decoration: none; display: inline-block; }
-.btn:hover { background: var(--accent-dark); }
-.btn.secondary { background: #f3f4f6; color: var(--ink); border: 1px solid var(--line); }
-.btn.secondary:hover { background: #e5e7eb; }
+/* Ink buttons: white text on the orange accent fails contrast. */
+.btn { background: var(--ink); color: #fff; border: 1px solid var(--ink); border-radius: 10px; padding: 10px 18px; font-family: inherit; font-size: 14px; font-weight: 600; cursor: pointer; text-decoration: none; display: inline-block; }
+.btn:hover { background: #374151; border-color: #374151; }
+.btn.secondary { background: #fff; color: var(--ink); border-color: var(--line); }
+.btn.secondary:hover { background: #f3f4f6; border-color: #d1d5db; }
 .actions { margin-top: 16px; }
 hr { border: none; border-top: 1px solid var(--line); margin: 22px 0; }
 
 /* popup */
 body.popup { width: 300px; padding: 14px; }
-.popup-head { display: flex; gap: 10px; align-items: center; margin-bottom: 8px; }
-.logo { font-size: 28px; }
-.popup .title { font-weight: 700; font-size: 15px; }
-.job-score { background: #fff7ed; border: 1px solid #fed7aa; border-radius: 12px; margin: 12px 0; padding: 12px; }
+.popup-head { display: flex; gap: 8px; align-items: center; }
+.popup-head h1 { font-size: 15px; margin: 0; }
+/* The landing page logo. The "?" is decoration, so it lives here, not in the page text. */
+.brand-mark { flex: none; display: grid; place-items: center; width: 22px; height: 22px; border-radius: 7px; background: var(--accent); color: #fff; font-size: 14px; font-weight: 800; }
+.brand-mark::before { content: "?"; }
+.link-btn { margin-left: auto; padding: 4px 6px; border: none; border-radius: 6px; background: none; color: var(--muted-dark); font-family: inherit; font-size: 13px; font-weight: 600; cursor: pointer; }
+.link-btn:hover { background: #f3f4f6; color: var(--ink); }
+
+.job-score { background: var(--bg); border: 1px solid var(--warm-line); border-radius: 12px; margin-top: 12px; padding: 12px; }
 .eyebrow { color: var(--accent-dark); font-size: 11px; font-weight: 700; letter-spacing: .06em; margin: 0 0 4px; text-transform: uppercase; }
-.job-name { font-size: 14px; font-weight: 700; line-height: 1.3; }
-.job-score-value { font-size: 22px; font-weight: 800; }
-.job-score-label { color: var(--muted); font-size: 12px; font-weight: 600; margin-left: 6px; }
-.job-result { margin-top: 8px; }
-.score-metrics { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin: 10px 0 0; }
-.score-metrics div { background: rgba(255,255,255,.7); border-radius: 8px; padding: 7px; }
-.score-metrics dt { color: var(--muted); font-size: 10px; }
-.score-metrics dd { font-size: 12px; font-weight: 700; margin: 2px 0 0; }
-.job-score .btn { margin-top: 8px; padding: 7px 10px; }
-.scorecard { display: grid; grid-template-columns: 1fr auto; gap: 3px 10px; margin: 10px 0 0; font-size: 11px; }
-.scorecard dt { color: var(--muted); }
+.job-name { font-size: 14px; font-weight: 700; line-height: 1.3; margin: 0; overflow-wrap: anywhere; }
+.job-status { color: var(--muted-dark); font-size: 13px; line-height: 1.4; margin: 4px 0 0; overflow-wrap: anywhere; }
+.headline { display: flex; gap: 8px; align-items: center; justify-content: space-between; margin: 10px 0 12px; }
+.recommendation { color: var(--ink); font-size: 20px; font-weight: 800; line-height: 1.2; margin: 0; }
+.score-chip { flex: none; border-radius: 999px; padding: 3px 9px; font-size: 13px; font-weight: 700; }
+.score-chip.high { background: #dcfce7; color: #166534; }
+.score-chip.mid { background: #fef3c7; color: #92400e; }
+.score-chip.low { background: #f3f4f6; color: #374151; }
+.scorecard { display: grid; grid-template-columns: 1fr auto; gap: 4px 10px; margin: 0; font-size: 12px; }
+.scorecard dt { color: var(--muted-dark); }
 .scorecard dd { margin: 0; font-weight: 700; text-align: right; }
-.scorecard .strong { color: #16a34a; }
-.scorecard .moderate { color: #d97706; }
-.scorecard .weak { color: #6b7280; }
-.foot { margin-top: 10px; }
+.scorecard .strong { color: #15803d; }
+.scorecard .moderate { color: #b45309; }
+.scorecard .weak { color: #4b5563; }
+.job-factor { font-size: 12px; margin: 8px 0 0; }
+.visa { border-top: 1px solid var(--warm-line); margin-top: 8px; padding-top: 8px; }
+.job-details { color: var(--muted-dark); font-size: 12px; margin: 8px 0 0; }
+.job-score .btn { margin-top: 12px; padding: 7px 12px; font-size: 13px; }

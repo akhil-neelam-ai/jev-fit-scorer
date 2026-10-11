@@ -65,11 +65,11 @@ try {
   const mf = await swSession.send("Runtime.evaluate", { expression: "JSON.stringify(chrome.runtime.getManifest().background)", returnByValue: true });
   check("worker runs with type: module", mf.result?.result?.value?.includes('"module"'), mf.result?.result?.value);
 
-  for (const [page, probe, expect] of [
-    ["popup.html", "document.getElementById('statusLine').textContent + ' | ' + document.getElementById('jobName').textContent", /setup needed/],
-    ["options.html", "document.getElementById('apiKey') ? 'form ok, testKey disabled=' + document.getElementById('testKey').disabled : 'missing form'", /form ok, testKey disabled=false/]
-  ]) {
-    // Extension-initiated navigation, the same path Chrome uses for Options.
+  // Opens an extension page in a new tab, the same path Chrome uses for
+  // Settings, and polls the probe until it matches. Returns the page's
+  // session and the probe's last value, or null if no tab opened.
+  const seenTargets = new Set();
+  async function openPage(page, probe, expect) {
     const created = await swSession.send("Runtime.evaluate", {
       expression: `chrome.tabs.create({ url: chrome.runtime.getURL("${page}") }).then((t) => t.id)`,
       awaitPromise: true, returnByValue: true
@@ -78,9 +78,10 @@ try {
     let target = null;
     for (let i = 0; i < 20 && !target; i++) {
       await sleep(250);
-      target = (await json("/json/list")).find((t) => t.type === "page" && t.url.endsWith("/" + page));
+      target = (await json("/json/list")).find((t) => t.type === "page" && t.url.endsWith("/" + page) && !seenTargets.has(t.id));
     }
-    if (!target) { check(`${page} opened`, false, "no page target"); continue; }
+    if (!target) { check(`${page} opened`, false, "no page target"); return null; }
+    seenTargets.add(target.id);
     const s = await cdpSession(target.webSocketDebuggerUrl);
     await s.send("Runtime.enable"); await s.send("Log.enable");
     let value = "";
@@ -90,10 +91,41 @@ try {
       value = out.result?.result?.value || String(out.result?.exceptionDetails?.exception?.description || "");
       if (expect.test(value)) break;
     }
-    check(`${page} loads as a module and talks to the worker`, expect.test(value), value);
-    check(`${page} has no console errors`, s.errors.length === 0, s.errors.join(" ; ").slice(0, 300));
-    s.close();
+    return { s, value };
   }
+
+  const STATE = "(document.body.dataset.state || 'no state') + ' | ' + document.getElementById('jobName').textContent";
+  const FORM = "['apiKey', 'resume'].map((id) => document.getElementById(id).value).join(' | ') + ' | ' + document.getElementById('needsSponsorship').checked";
+  for (const [page, probe, expect] of [
+    // Only popup.js sets data-state, and "setup" means the worker answered get_status (a fresh profile has no key).
+    ["popup.html", STATE, /^setup \| Set up Worth Applying\?$/],
+    ["options.html", "document.getElementById('apiKey') ? 'form ok, testKey disabled=' + document.getElementById('testKey').disabled : 'missing form'", /form ok, testKey disabled=false/]
+  ]) {
+    const tab = await openPage(page, probe, expect);
+    if (!tab) continue;
+    check(`${page} loads as a module and talks to the worker`, expect.test(tab.value), tab.value);
+    check(`${page} has no console errors`, tab.s.errors.length === 0, tab.s.errors.join(" ; ").slice(0, 300));
+    if (page !== "options.html") { tab.s.close(); continue; }
+
+    // Save settings from this Settings page through the real worker. A fresh
+    // Settings page then fills its form from get_settings.
+    const saved = await tab.s.send("Runtime.evaluate", {
+      expression: `chrome.runtime.sendMessage({ type: "save_settings", settings: { apiKey: "sk-test", resume: "MBA, 4y analytics", needsSponsorship: false } })`,
+      awaitPromise: true, returnByValue: true
+    });
+    check("save_settings from Settings is stored", saved.result?.result?.value?.ok === true, JSON.stringify(saved.result?.result?.value));
+    tab.s.close();
+  }
+
+  const settings = await openPage("options.html", FORM, /^sk-test \| MBA, 4y analytics \| false$/);
+  check("a fresh Settings page fills its form from get_settings", /^sk-test \| MBA, 4y analytics \| false$/.test(settings?.value), settings?.value);
+  settings?.s.close();
+  // With setup done, the popup asks Chrome for the active tab. Opened as a
+  // tab of its own, it finds no web page there to score.
+  const popup = await openPage("popup.html", STATE, /^unscorable \| Open a job posting$/);
+  check("with setup done, the popup gets the active tab without the tabs permission", /^unscorable/.test(popup?.value), popup?.value);
+  check("the set-up popup has no console errors", popup?.s.errors.length === 0, popup?.s.errors.join(" ; ").slice(0, 300));
+  popup?.s.close();
   swSession.close();
 } catch (e) {
   console.log("ERROR", e.message); failures++;

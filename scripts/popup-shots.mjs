@@ -3,34 +3,39 @@
 // popup.html, popup.js, styles.css, or scoring.js so the site keeps matching the extension.
 //
 // Usage: CHROME_BIN="/path/to/Google Chrome for Testing" node scripts/popup-shots.mjs
+//
+// OUT_DIR sets where the screenshots go. It defaults to the repo's site folder.
+// Point it somewhere else to try a change without touching the site:
+//   OUT_DIR=/tmp/popup-test CHROME_BIN="/path/to/Google Chrome for Testing" node scripts/popup-shots.mjs
 import { spawn } from "node:child_process";
 import { createServer } from "node:http";
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { extname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const ROOT = fileURLToPath(new URL("..", import.meta.url));
+const OUT_DIR = process.env.OUT_DIR || join(ROOT, "site");
 
 // Real results from the 101-posting test run (scoring version 5), with company names removed.
 const SAMPLES = {
   apm: {
     title: "Associate Product Manager",
-    result: { fit: 2.6, fitConfidence: 0.51, why: "role_level", inputTokens: 3220, elapsedMs: 125, scorecard: {
+    result: { fit: 2.6, fitConfidence: 0.51, why: "role_level", visa: 0.79, inputTokens: 3220, elapsedMs: 125, scorecard: {
       required_qualifications: { score: 1.66, label: "Strong" }, function: { score: 1.84, label: "Strong" },
       role_level: { score: 1.94, label: "Strong" }, customer_type: { score: 1.22, label: "Moderate" },
       company_stage: { score: 1.51, label: "Strong" }, domain: { score: 1.07, label: "Moderate" } } }
   },
   growth: {
     title: "Product Manager, Growth Strategy",
-    result: { fit: 0.99, fitConfidence: 0.82, why: "required_qualifications", inputTokens: 3673, elapsedMs: 94, scorecard: {
+    result: { fit: 0.99, fitConfidence: 0.82, why: "required_qualifications", visa: 0.17, inputTokens: 3673, elapsedMs: 94, scorecard: {
       required_qualifications: { score: 0.45, label: "Weak" }, function: { score: 0.73, label: "Moderate" },
       role_level: { score: 0.88, label: "Moderate" }, customer_type: { score: 0.68, label: "Moderate" },
       company_stage: { score: 1.03, label: "Moderate" }, domain: { score: 0.72, label: "Moderate" } } }
   },
   engineer: {
     title: "Lead, Software Engineer",
-    result: { fit: 0.03, fitConfidence: 0.98, why: "required_qualifications", inputTokens: 4228, elapsedMs: 122, scorecard: {
+    result: { fit: 0.03, fitConfidence: 0.98, why: "required_qualifications", visa: 0.13, inputTokens: 4228, elapsedMs: 122, scorecard: {
       required_qualifications: { score: 0, label: "Weak" }, function: { score: 0.01, label: "Weak" },
       role_level: { score: 0, label: "Weak" }, customer_type: { score: 0.98, label: "Moderate" },
       company_stage: { score: 0.58, label: "Moderate" }, domain: { score: 0.08, label: "Weak" } } }
@@ -44,6 +49,7 @@ if (!process.env.CHROME_BIN) {
   console.error("Set CHROME_BIN to a Chrome for Testing binary.");
   process.exit(1);
 }
+mkdirSync(OUT_DIR, { recursive: true });
 
 // Serve the repo so popup.html loads its real script and stylesheet.
 const server = createServer((request, response) => {
@@ -78,6 +84,15 @@ const stub = (job, result) => `Object.defineProperty(window, "chrome", { configu
   }
 } });`;
 
+// True once the popup shows a result. The redesigned popup sets body[data-state="result"].
+// The older one unhides the scorecard and says "Fresh result". Both need a filled scorecard.
+const RESULT_READY = `(() => {
+  const scorecard = document.getElementById("jobScorecard");
+  if (!scorecard || (scorecard.childElementCount === 0 && scorecard.textContent.trim() === "")) return false;
+  if (document.body.dataset.state === "result") return true;
+  return !scorecard.hidden && Boolean(document.getElementById("jobStatus")?.textContent.includes("Fresh result"));
+})()`;
+
 try {
   let target = null;
   for (let i = 0; i < 40 && !target; i++) {
@@ -108,13 +123,13 @@ try {
   // Opens the popup with one sample's result and returns the popup's height.
   async function render(key) {
     const { title, result } = SAMPLES[key];
-    const job = { title, company: "", description: "Sample job description. ".repeat(20), pageUrl: "https://example.com/job" };
+    const job = { title, company: "", description: "Sample job description. ".repeat(20), pageUrl: "https://example.com/job", looksLikeJob: true, embeddedSrc: "" };
     const { result: { identifier } } = await send("Page.addScriptToEvaluateOnNewDocument", { source: stub(job, { ...result, cached: false }) });
     await send("Page.navigate", { url: `${base}/popup.html` });
     let ready = false;
     for (let i = 0; i < 50 && !ready; i++) {
       await sleep(100);
-      ready = await evaluate(`!document.getElementById("jobScorecard").hidden && document.getElementById("jobStatus").textContent.includes("Fresh result")`);
+      ready = await evaluate(RESULT_READY);
     }
     await send("Page.removeScriptToEvaluateOnNewDocument", { identifier });
     if (!ready) throw new Error(`The popup did not render a result for ${key}.`);
@@ -129,8 +144,8 @@ try {
   for (const key of Object.keys(SAMPLES)) {
     await render(key);
     const shot = await send("Page.captureScreenshot", { format: "webp", quality: 92, clip: { x: 0, y: 0, width: 328, height, scale: 1 } });
-    const file = `site/popup-${key}.webp`;
-    writeFileSync(join(ROOT, file), Buffer.from(shot.result.data, "base64"));
+    const file = join(OUT_DIR, `popup-${key}.webp`);
+    writeFileSync(file, Buffer.from(shot.result.data, "base64"));
     console.log(`${file}: 328x${height} at 2x, ${Math.round(Buffer.byteLength(shot.result.data, "base64") / 1024)} KB`);
   }
   socket.close();

@@ -2,12 +2,12 @@
 <html>
 <head>
   <meta charset="utf-8">
-  <title>Worth Applying? Options</title>
+  <title>Worth Applying? Settings</title>
   <link rel="stylesheet" href="styles.css">
 </head>
 <body class="page">
   <div class="card">
-    <h1>Worth Applying? <span class="muted">Options</span></h1>
+    <h1>Worth Applying? <span class="muted">Settings</span></h1>
     <p class="muted">Open any job posting, then click the extension to score it with TypeSafe's Jev model.</p>
 
     <label class="field">
@@ -17,7 +17,7 @@
         <button id="testKey" class="btn secondary">Test & save API key</button>
         <span id="testResult" class="muted"></span>
       </div>
-      <small class="muted">Get one at <b>console.typesafe.ai/settings/keys</b> (early access waitlist) or use the Netlify / Vercel AI Gateway.</small>
+      <small class="muted">Get one at <b>console.typesafe.ai/settings/keys</b>.</small>
     </label>
 
     <label class="field">
@@ -39,9 +39,9 @@
     <h2>Why this is cheap</h2>
     <p class="muted small">
       Jev charges $0.042 per million input tokens and no output tokens. Full job
-      descriptions vary in length, so the popup reports the tokens used and estimated spend.
+      descriptions vary in length, so the popup shows the estimated cost of each score.
     </p>
-    <p class="muted small">Nothing leaves your browser except the visible job description + your resume, sent to api.typesafe.ai for scoring.</p>
+    <p class="muted small">When you click the extension icon, it sends your resume and the open page's title, company, text, and web address to api.typesafe.ai for scoring. Nothing else leaves your browser.</p>
   </div>
   <script src="options.js"></script>
 </body>

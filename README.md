@@ -25,7 +25,7 @@ The popup turns those answers into:
 - A recommendation that follows the score
 - A six-part scorecard rating required qualifications, core work, role level, customer type, company stage, and domain
 - The single strongest factor in the fit, good or bad
-- How likely the employer sponsors US visas. This is on by default. Turn it off in Options if you don't need sponsorship. The fit score is the same either way.
+- How likely the employer sponsors US visas. This is on by default. Turn it off in Settings if you don't need sponsorship. The fit score is the same either way.
 - The model's confidence, plus the time and cost of the call, or "Cached" if you already scored this job
 
 | Score | Recommendation |
@@ -59,7 +59,7 @@ Works in Chrome and other Chromium browsers, including Comet, Edge, and Brave.
 
 1. On this repo's GitHub page, click **Code**, then **Download ZIP**, and unzip it. You can also clone the repo.
 2. Open `chrome://extensions`, turn on **Developer mode**, click **Load unpacked**, and pick the folder that holds `manifest.json`.
-3. Click the extension icon, then **Options**. Paste your API key and click **Test & save API key**.
+3. Click the extension icon, then **Settings**. Paste your API key and click **Test & save API key**.
 4. Paste your resume as plain text and click **Save**. Uncheck the visa box if you don't need sponsorship.
 5. Open a job posting and click the extension icon.
 
@@ -98,7 +98,7 @@ served at [ENDPOINT URL]. Its API docs are at [DOCS URL].
 
 ## Privacy
 
-Your resume and API key stay in your browser's local extension storage. When you score a job, the extension sends your resume and the visible job description to api.typesafe.ai. Nothing else leaves your browser.
+Your resume and API key stay in your browser's local extension storage. When you click the extension icon, it sends your resume and the open page's title, company, text, and web address to api.typesafe.ai for scoring. Nothing else leaves your browser.
 
 The extension only reads a page after you click its icon. It doesn't ask for access to every site you visit.
 

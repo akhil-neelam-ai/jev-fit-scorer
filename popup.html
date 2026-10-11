@@ -1,42 +1,40 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
   <meta charset="utf-8">
   <title>Worth Applying?</title>
   <link rel="stylesheet" href="styles.css">
 </head>
 <body class="popup">
-  <div class="popup-head">
-    <span class="logo">🔥</span>
-    <div>
-      <div class="title">Worth Applying?</div>
-      <div class="muted small" id="statusLine">checking…</div>
-    </div>
-  </div>
+  <header class="popup-head">
+    <span class="brand-mark" aria-hidden="true"></span>
+    <h1>Worth Applying?</h1>
+    <button id="openOptions" class="link-btn" type="button">Settings</button>
+  </header>
 
   <section class="job-score" aria-live="polite">
-    <p class="eyebrow">Open job description</p>
-    <div class="job-name" id="jobName">Looking for a job page…</div>
-    <div class="job-result" id="jobResult" hidden>
-      <span class="job-score-value" id="jobScore">–</span>
-      <span class="job-score-label" id="jobScoreLabel"></span>
-      <dl class="score-metrics">
-        <div><dt>Confidence</dt><dd id="jobConfidence">–</dd></div>
-        <div><dt>Speed</dt><dd id="jobSpeed">–</dd></div>
-        <div><dt>Cost</dt><dd id="jobCost">–</dd></div>
-      </dl>
+    <p class="eyebrow" id="jobEyebrow" hidden>This job</p>
+    <h2 class="job-name" id="jobName">Reading this page…</h2>
+    <p class="job-status" id="jobStatus">Finding the job description.</p>
+    <div id="jobResult" hidden>
+      <div class="headline">
+        <p class="recommendation" id="jobRecommendation"></p>
+        <span class="score-chip" id="jobScore"></span>
+      </div>
       <dl class="scorecard" id="jobScorecard" hidden></dl>
+      <p class="job-factor" id="jobFactor"></p>
+      <dl class="scorecard visa" id="jobVisa" hidden>
+        <dt>Visa sponsorship</dt>
+        <dd id="jobVisaValue"></dd>
+      </dl>
+      <p class="job-details" id="jobDetails"></p>
     </div>
-    <p class="muted small" id="jobStatus">Open a role, then click the extension.</p>
-    <button id="rescore" class="btn secondary" hidden>Score again</button>
+    <button id="rescore" class="btn secondary" type="button" hidden>Score again</button>
+    <button id="setupSettings" class="btn" type="button" hidden>Open Settings</button>
+    <button id="scoreAnyway" class="btn" type="button" hidden>Score anyway</button>
+    <button id="openEmbedded" class="btn" type="button" hidden>Open the posting</button>
   </section>
 
-  <div class="row">
-    <button id="openOptions" class="btn">Options</button>
-    <a id="openBoard" class="btn secondary" href="https://www.lennysjobs.com/" target="_blank">Open Lenny's Jobs</a>
-  </div>
-
-  <p class="muted small foot">Jev reads the visible full job description only after you open it and click the extension. Scores are cached for unchanged jobs and resumes.</p>
   <script type="module" src="popup.js"></script>
 </body>
 </html>
