@@ -167,7 +167,9 @@ html:not(.js) .sample-list { display: none; }
 .mock-ext.is-clicked::after { content: ""; position: absolute; inset: -4px; border: 2px solid var(--accent); border-radius: 11px; opacity: 0; animation: ping 2s cubic-bezier(0, 0, 0.2, 1) infinite; }
 .mock-click { position: relative; }
 .mock-click .mock-body { min-height: 370px; align-content: start; }
-.mock-click .mock-body > * { opacity: 0.55; }
+/* The page behind the popup looks faded. Only the large title and the text bars fade, so the small text keeps its contrast. */
+.mock-click .mock-title, .mock-click .mock-lines { opacity: 0.55; }
+.mock-click .mock-apply { color: var(--muted); border-color: var(--line); }
 .mock-popup { position: absolute; top: 50px; right: 12px; width: min(62%, 280px); height: auto; border-radius: 12px; box-shadow: 0 24px 60px rgba(17, 24, 39, 0.35), 0 0 0 1px rgba(17, 24, 39, 0.06); }
 .mock-cursor { position: absolute; top: 36px; right: 5px; width: 22px; height: 22px; fill: #fff; stroke: #111827; stroke-width: 1.4; stroke-linejoin: round; filter: drop-shadow(0 1px 1px rgba(0, 0, 0, 0.3)); }
 .mock-body { display: grid; gap: 10px; padding: 24px 26px 28px; }
