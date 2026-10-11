@@ -13,6 +13,8 @@ Thanks for helping. This page covers how the code is laid out, how to change the
 | `cli.js` | The same scoring from the command line |
 | `test/` | Tests for the score math, the worker, and loading the extension |
 | `eval/` | The scripts behind the numbers in the README |
+| `site/` | The landing page at worth-applying.vercel.app |
+| `scripts/popup-shots.mjs` | Renders the real popup into the landing page's screenshots. Rerun it after changing the popup: `CHROME_BIN=... node scripts/popup-shots.mjs` |
 
 ## Change the scoring
 

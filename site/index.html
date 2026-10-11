@@ -3,6 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <script>document.documentElement.classList.add("js");</script>
   <title>Worth Applying? Chrome extension for job fit scores</title>
   <meta name="description" content="Open-source Chrome extension that scores how well a job posting fits your resume. Get a 1 to 10 fit score, a scorecard, and whether to apply.">
   <meta name="robots" content="index, follow, max-image-preview:large">
@@ -26,6 +27,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700&family=IBM+Plex+Mono:wght@400;500&family=Source+Sans+3:wght@400;600;700&display=swap">
   <link rel="stylesheet" href="styles.css">
+  <script src="app.js" defer></script>
   <script type="application/ld+json">
   {
     "@context": "https://schema.org",
@@ -74,34 +76,27 @@
       </div>
 
       <div class="hero-visual">
-        <div class="card" role="img" aria-label="Extension result: fit score 7 out of 10, apply and tailor. Scorecard: required qualifications strong, core work strong, role level strong, customer type moderate, company stage strong, domain moderate.">
-          <div class="card-head"><span class="brand-mark" aria-hidden="true">?</span>Worth Applying?</div>
-          <div class="result">
-            <p class="result-eyebrow">Open job description</p>
-            <p class="result-job">Associate Product Manager</p>
-            <p class="result-score"><span class="score-big">Fit score 7/10</span><span class="score-tier">Apply and tailor</span></p>
-            <dl class="metrics">
-              <div><dt>Confidence</dt><dd>55%</dd></div>
-              <div><dt>Speed</dt><dd>0.2s</dd></div>
-              <div><dt>Cost</dt><dd>$0.00013</dd></div>
-            </dl>
-            <dl class="scorecard">
-              <dt>Required qualifications</dt><dd class="strong">Strong</dd>
-              <dt>Core work</dt><dd class="strong">Strong</dd>
-              <dt>Role level</dt><dd class="strong">Strong</dd>
-              <dt>Customer type</dt><dd class="moderate">Moderate</dd>
-              <dt>Company stage</dt><dd class="strong">Strong</dd>
-              <dt>Domain</dt><dd class="moderate">Moderate</dd>
-            </dl>
-            <p class="result-status">Main factor: role level</p>
+        <div class="picker" role="group" aria-labelledby="picker-label">
+          <span class="picker-label" id="picker-label">Same resume, three postings</span>
+          <div class="picker-buttons">
+            <button type="button" data-sample="apm" data-score="7" data-summary="Associate Product Manager: fit score 7 out of 10, apply and tailor." aria-pressed="true">Associate PM</button>
+            <button type="button" data-sample="growth" data-score="4" data-summary="Product Manager, Growth Strategy: fit score 4 out of 10, apply if interested." aria-pressed="false">Growth PM</button>
+            <button type="button" data-sample="engineer" data-score="2" data-summary="Lead, Software Engineer: fit score 2 out of 10, deprioritize." aria-pressed="false">Lead engineer</button>
           </div>
         </div>
-        <div class="scale" aria-hidden="true">
-          <div class="scale-bar"><span></span><span></span><span></span><span></span></div>
-          <div class="scale-track"><span class="marker"></span></div>
-          <div class="scale-labels"><span>1–3 Deprioritize</span><span>4–5 If interested</span><span>6–7 Apply and tailor</span><span>8–10 Strongly apply</span></div>
+        <!-- Screenshots of the real popup. Regenerate with scripts/popup-shots.mjs after changing the popup. -->
+        <div class="popup-frame">
+          <img class="shot is-on" data-shot="apm" src="popup-apm.webp" width="328" height="533" fetchpriority="high" alt="The Worth Applying? popup on an Associate Product Manager posting: fit score 7/10, apply and tailor. Confidence 51%, speed 0.1s, cost $0.00014. Required qualifications, core work, role level, and company stage are strong. Customer type and domain are moderate. Main factor: role level.">
+          <img class="shot" data-shot="growth" src="popup-growth.webp" width="328" height="549" aria-hidden="true" alt="The Worth Applying? popup on a Product Manager, Growth Strategy posting: fit score 4/10, apply if interested. Confidence 82%, speed 0.1s, cost $0.00015. Required qualifications are weak. The other five parts are moderate. Main factor: required qualifications.">
+          <img class="shot" data-shot="engineer" src="popup-engineer.webp" width="328" height="549" aria-hidden="true" alt="The Worth Applying? popup on a Lead, Software Engineer posting: fit score 2/10, deprioritize. Confidence 98%, speed 0.1s, cost $0.00018. Required qualifications, core work, role level, and domain are weak. Customer type and company stage are moderate. Main factor: required qualifications.">
         </div>
-        <p class="caption">A real result from our test run, with the company removed.</p>
+        <div class="scale" aria-hidden="true" style="--s: 7">
+          <div class="scale-bar"><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span></div>
+          <div class="scale-track"><span class="marker"></span></div>
+          <div class="scale-labels"><span><b>1–3</b>Deprioritize</span><span><b>4–5</b>If interested</span><span class="on"><b>6–7</b>Apply and tailor</span><span><b>8–10</b>Strongly apply</span></div>
+        </div>
+        <p class="caption">Real results from our test run, with company names removed.</p>
+        <p class="sr-only" aria-live="polite" data-live></p>
       </div>
     </section>
 
