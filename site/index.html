@@ -135,14 +135,15 @@
       </div>
     </section>
 
-    <!-- Demo video: add demo.mp4 to this folder, then remove the hidden attribute. -->
+    <!-- Demo video: add demo.mp4 to this folder, add src="demo.mp4" to the video, then remove the hidden attribute.
+         Leave src off until the file exists. Browsers fetch it even while the section is hidden. -->
     <section class="band demo" id="demo" aria-labelledby="demo-title" hidden>
       <div class="wrap">
         <div class="section-head">
           <p class="label">Demo</p>
           <h2 id="demo-title">See it score a real posting.</h2>
         </div>
-        <video controls preload="metadata" playsinline src="demo.mp4"></video>
+        <video controls preload="metadata" playsinline></video>
       </div>
     </section>
 
