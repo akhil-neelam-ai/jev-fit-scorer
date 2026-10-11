@@ -27,7 +27,7 @@
 
   <main class="wrap narrow doc">
     <div class="section-head">
-      <p class="label">Last updated October 10, 2026</p>
+      <p class="label">Last updated October 11, 2026</p>
       <h1>Privacy policy</h1>
       <p>This covers the Worth Applying? Chrome extension. The short version: your data stays in your browser, except what goes to TypeSafe to score a job. We don't run a server and we don't collect anything.</p>
     </div>
@@ -39,15 +39,14 @@
       <li>Your resume text</li>
       <li>Your settings, such as whether you want the visa estimate</li>
       <li>Scores for jobs you've already checked, so the same job isn't scored twice</li>
-      <li>Simple counts, such as how many jobs you've scored and how many tokens that used</li>
     </ul>
 
     <h2>What it sends, and when</h2>
-    <p>Only when you click the extension icon on a job page, it reads that page and sends the following to TypeSafe's API at api.typesafe.ai:</p>
+    <p>It reads a page only when you click the extension icon. If the page looks like a job posting, it sends the following to TypeSafe's API at api.typesafe.ai. On any other page, it sends nothing unless you click Score anyway.</p>
     <ul>
       <li>Your resume text</li>
       <li>The job's title, company, and description from the page</li>
-      <li>The page's web address</li>
+      <li>The page's web address, minus anything after a ? or #</li>
     </ul>
     <p>When you test your API key in Settings, it sends one short test request with that key. TypeSafe's own privacy policy covers what it does with what it receives.</p>
 
@@ -56,16 +55,15 @@
       <li>It doesn't send anything to us. We don't run a server.</li>
       <li>It has no analytics, tracking, or ads.</li>
       <li>It doesn't read pages unless you click its icon.</li>
-      <li>It doesn't sell or share your data.</li>
+      <li>It doesn't sell your data or send it anywhere except TypeSafe.</li>
     </ul>
 
     <h2>Why it asks for these permissions</h2>
     <table class="perms">
       <thead><tr><th>Permission</th><th>Why</th></tr></thead>
       <tbody>
-        <tr><td><code>activeTab</code>, <code>scripting</code></td><td>To read the job page you're on, only after you click the icon</td></tr>
+        <tr><td><code>activeTab</code>, <code>scripting</code></td><td>To read the page you're on, only after you click the icon</td></tr>
         <tr><td><code>storage</code></td><td>To keep your key, resume, settings, and past scores on your device</td></tr>
-        <tr><td><code>tabs</code></td><td>To find the page you're looking at when you click the icon</td></tr>
         <tr><td>api.typesafe.ai</td><td>To send the scoring request</td></tr>
       </tbody>
     </table>
