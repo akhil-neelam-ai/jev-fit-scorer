@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Privacy policy · Worth Applying?</title>
+  <meta name="description" content="What the Worth Applying? Chrome extension stores, what it sends, and what it never does.">
+  <link rel="canonical" href="https://worth-applying.vercel.app/privacy">
+  <link rel="icon" href="favicon.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700&family=IBM+Plex+Mono:wght@400;500&family=Source+Sans+3:wght@400;600;700&display=swap">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="wrap site-head">
+    <a class="brand" href="/" aria-label="Worth Applying? home"><span class="brand-mark" aria-hidden="true">?</span>Worth Applying?</a>
+    <a class="head-link" href="https://github.com/akhil-neelam-ai/worth-applying">GitHub</a>
+  </header>
+
+  <main class="wrap narrow doc">
+    <div class="section-head">
+      <p class="label">Last updated October 10, 2026</p>
+      <h1>Privacy policy</h1>
+      <p>This covers the Worth Applying? Chrome extension. The short version: your data stays in your browser, except what goes to TypeSafe to score a job. We don't run a server and we don't collect anything.</p>
+    </div>
+
+    <h2>What the extension stores</h2>
+    <p>Everything below lives in your browser's local extension storage, on your device:</p>
+    <ul>
+      <li>Your TypeSafe API key</li>
+      <li>Your resume text</li>
+      <li>Your settings, such as whether you want the visa estimate</li>
+      <li>Scores for jobs you've already checked, so the same job isn't scored twice</li>
+      <li>Simple counts, such as how many jobs you've scored and how many tokens that used</li>
+    </ul>
+
+    <h2>What it sends, and when</h2>
+    <p>Only when you click the extension icon on a job page, it reads that page and sends the following to TypeSafe's API at api.typesafe.ai:</p>
+    <ul>
+      <li>Your resume text</li>
+      <li>The job's title, company, and description from the page</li>
+      <li>The page's web address</li>
+    </ul>
+    <p>When you test your API key in Options, it sends one short test request with that key. TypeSafe's own privacy policy covers what it does with what it receives.</p>
+
+    <h2>What it never does</h2>
+    <ul>
+      <li>It doesn't send anything to us. We don't run a server.</li>
+      <li>It has no analytics, tracking, or ads.</li>
+      <li>It doesn't read pages unless you click its icon.</li>
+      <li>It doesn't sell or share your data.</li>
+    </ul>
+
+    <h2>Why it asks for these permissions</h2>
+    <table class="perms">
+      <thead><tr><th>Permission</th><th>Why</th></tr></thead>
+      <tbody>
+        <tr><td><code>activeTab</code>, <code>scripting</code></td><td>To read the job page you're on, only after you click the icon</td></tr>
+        <tr><td><code>storage</code></td><td>To keep your key, resume, settings, and past scores on your device</td></tr>
+        <tr><td><code>tabs</code></td><td>To find the page you're looking at when you click the icon</td></tr>
+        <tr><td>api.typesafe.ai</td><td>To send the scoring request</td></tr>
+      </tbody>
+    </table>
+
+    <h2>Deleting your data</h2>
+    <p>Remove the extension from <code>chrome://extensions</code>. That deletes everything it stored. To change your resume or key, edit them in Options and click Save.</p>
+
+    <h2>Questions</h2>
+    <p>Open an issue on <a href="https://github.com/akhil-neelam-ai/worth-applying/issues">GitHub</a>. The code is open source, so you can check everything above for yourself.</p>
+  </main>
+
+  <footer class="site-foot">
+    <div class="wrap">
+      <span>Worth Applying? · MIT license · Not affiliated with Lenny's Jobs, TrueUp, or TypeSafe.</span>
+      <span><a href="/">Home</a> · <a href="https://github.com/akhil-neelam-ai/worth-applying">GitHub</a></span>
+    </div>
+  </footer>
+</body>
+</html>

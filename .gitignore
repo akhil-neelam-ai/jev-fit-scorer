@@ -10,3 +10,6 @@ resume*.txt
 resume*.md
 *.resume.*
 eval/private/
+
+# Vercel link metadata for site/
+.vercel/

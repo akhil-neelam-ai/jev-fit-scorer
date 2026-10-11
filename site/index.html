@@ -1,0 +1,179 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Worth Applying? Job fit scores for any job posting</title>
+  <meta name="description" content="A Chrome extension that scores how well a job posting fits your resume before you apply. Open source. Uses Jev, a decision model.">
+  <link rel="canonical" href="https://worth-applying.vercel.app/">
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://worth-applying.vercel.app/">
+  <meta property="og:title" content="Worth Applying? Know if a job fits before you apply.">
+  <meta property="og:description" content="A Chrome extension that scores any job posting against your resume in about a second.">
+  <meta property="og:image" content="https://worth-applying.vercel.app/og.png">
+  <meta name="twitter:card" content="summary_large_image">
+  <link rel="icon" href="favicon.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700&family=IBM+Plex+Mono:wght@400;500&family=Source+Sans+3:wght@400;600;700&display=swap">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="wrap site-head">
+    <a class="brand" href="/" aria-label="Worth Applying? home"><span class="brand-mark" aria-hidden="true">?</span>Worth Applying?</a>
+    <a class="head-link" href="https://github.com/akhil-neelam-ai/worth-applying">GitHub</a>
+  </header>
+
+  <main>
+    <section class="wrap hero" aria-labelledby="hero-title">
+      <div class="hero-copy">
+        <p class="label">Chrome extension</p>
+        <h1 id="hero-title">Know if a job fits before you apply.</h1>
+        <p class="lede">Worth Applying? scores any job posting against your resume in about a second.</p>
+        <div class="actions">
+          <a class="btn btn-primary" href="https://github.com/akhil-neelam-ai/worth-applying">Get it on GitHub <span class="arrow" aria-hidden="true">→</span></a>
+          <a class="btn btn-quiet" href="#how">How it works</a>
+        </div>
+        <p class="fine">Open source. Bring your own TypeSafe API key. Each score costs a fraction of a cent.</p>
+      </div>
+
+      <div class="hero-visual">
+        <div class="card" role="img" aria-label="Extension result: fit score 7 out of 10, apply and tailor. Scorecard: required qualifications strong, core work strong, role level strong, customer type moderate, company stage strong, domain moderate.">
+          <div class="card-head"><span class="brand-mark" aria-hidden="true">?</span>Worth Applying?</div>
+          <div class="result">
+            <p class="result-eyebrow">Open job description</p>
+            <p class="result-job">Associate Product Manager</p>
+            <p class="result-score"><span class="score-big">Fit score 7/10</span><span class="score-tier">Apply and tailor</span></p>
+            <dl class="metrics">
+              <div><dt>Confidence</dt><dd>55%</dd></div>
+              <div><dt>Speed</dt><dd>0.2s</dd></div>
+              <div><dt>Cost</dt><dd>$0.00013</dd></div>
+            </dl>
+            <dl class="scorecard">
+              <dt>Required qualifications</dt><dd class="strong">Strong</dd>
+              <dt>Core work</dt><dd class="strong">Strong</dd>
+              <dt>Role level</dt><dd class="strong">Strong</dd>
+              <dt>Customer type</dt><dd class="moderate">Moderate</dd>
+              <dt>Company stage</dt><dd class="strong">Strong</dd>
+              <dt>Domain</dt><dd class="moderate">Moderate</dd>
+            </dl>
+            <p class="result-status">Main factor: role level</p>
+          </div>
+        </div>
+        <div class="scale" aria-hidden="true">
+          <div class="scale-bar"><span></span><span></span><span></span><span></span></div>
+          <div class="scale-track"><span class="marker"></span></div>
+          <div class="scale-labels"><span>1–3 Deprioritize</span><span>4–5 If interested</span><span>6–7 Apply and tailor</span><span>8–10 Strongly apply</span></div>
+        </div>
+        <p class="caption">A real result from our test run, with the company removed.</p>
+      </div>
+    </section>
+
+    <section class="band tinted" aria-labelledby="fit-title">
+      <div class="wrap">
+        <div class="section-head">
+          <p class="label">Why it matters</p>
+          <h2 id="fit-title">Most postings aren't a ready fit.</h2>
+          <p>We scored one MBA candidate's resume against 101 job postings, mostly product roles.</p>
+        </div>
+        <div class="split" role="img" aria-label="29 poor fits, 59 medium fits, 13 strong fits out of 101 postings">
+          <div class="poor">29</div>
+          <div class="medium">59</div>
+          <div class="strong-fit">13</div>
+        </div>
+        <div class="split-legend" aria-hidden="true">
+          <span class="k-poor">Poor fit, 1 to 3</span>
+          <span class="k-medium">Medium fit, 4 to 6</span>
+          <span class="k-strong">Strong fit, 7 to 10</span>
+        </div>
+        <p class="punch">Reading every posting to find that out takes time you could spend on the 13 that fit.</p>
+      </div>
+    </section>
+
+    <section class="band" id="how" aria-labelledby="how-title">
+      <div class="wrap">
+        <div class="section-head">
+          <p class="label">How it works</p>
+          <h2 id="how-title">Set it up once. Then one click per job.</h2>
+        </div>
+        <ol class="steps">
+          <li><h3>Paste your resume once.</h3><p>It stays in your browser. Turn on the visa estimate if you need sponsorship.</p></li>
+          <li><h3>Open any job posting.</h3><p>Company career pages, job boards, anywhere the description is on the page.</p></li>
+          <li><h3>Click the icon.</h3><p>You get a score out of 10, a recommendation, and a six-part scorecard.</p></li>
+        </ol>
+        <div class="dims">
+          <div class="dims-note">
+            <h3>What the score looks at</h3>
+            <p>A decision model answers nine questions about your resume and the job at once. It returns typed answers with probabilities instead of writing text, which keeps it fast and cheap.</p>
+            <p>The six parts are listed from most to least weight. Visa sponsorship gets its own estimate, and it never lowers your fit score.</p>
+          </div>
+          <dl class="dims-list">
+            <div><dt>Required qualifications</dt><dd>The experience, skills, and years the posting asks for</dd></div>
+            <div><dt>Core work</dt><dd>Whether you've done this kind of work</dd></div>
+            <div><dt>Role level</dt><dd>Whether your scope matches the role's seniority</dd></div>
+            <div><dt>Customer type</dt><dd>The kind of users or customers you've served</dd></div>
+            <div><dt>Company stage</dt><dd>Startup, growth company, enterprise, or public sector</dd></div>
+            <div><dt>Domain</dt><dd>The industry, which matters least</dd></div>
+          </dl>
+        </div>
+      </div>
+    </section>
+
+    <section class="band" aria-labelledby="check-title">
+      <div class="wrap">
+        <div class="section-head">
+          <p class="label">How we checked it</p>
+          <h2 id="check-title">Checked against a full AI review.</h2>
+          <p>We calibrated the score against the "Am I a fit?" analysis on Lenny's Jobs, which writes a full review of one job at a time. Then we compared the two on 101 postings. Each posting was scored by a version of our calibration that hadn't seen it.</p>
+        </div>
+        <div class="numbers">
+          <div class="number"><b>50 of 101</b><span>Same score as Lenny's</span></div>
+          <div class="number"><b>93 of 101</b><span>Same score or 1 point off</span></div>
+          <div class="number"><b>0.6</b><span>Points apart on average, on a 1 to 10 scale</span></div>
+        </div>
+        <p class="footnote">All 101 postings were scored against one resume, so your results may differ. Lenny's Jobs is a reference point, not the truth. This project isn't affiliated with Lenny's Jobs.</p>
+      </div>
+    </section>
+
+    <!-- Demo video: add demo.mp4 to this folder, then remove the hidden attribute. -->
+    <section class="band demo" id="demo" aria-labelledby="demo-title" hidden>
+      <div class="wrap">
+        <div class="section-head">
+          <p class="label">Demo</p>
+          <h2 id="demo-title">See it score a real posting.</h2>
+        </div>
+        <video controls preload="metadata" playsinline src="demo.mp4"></video>
+      </div>
+    </section>
+
+    <section class="band tinted" id="try" aria-labelledby="try-title">
+      <div class="wrap install">
+        <div class="section-head">
+          <p class="label">Try it now</p>
+          <h2 id="try-title">Install it in two minutes.</h2>
+          <p>It's on GitHub today. A Chrome Web Store listing is next.</p>
+        </div>
+        <div class="install-side">
+          <ol>
+            <li>Download the code from GitHub and unzip it.</li>
+            <li>In Chrome, open <code>chrome://extensions</code>, turn on Developer mode, and click Load unpacked.</li>
+            <li>Pick the unzipped folder. Then add your TypeSafe API key and resume in Options.</li>
+          </ol>
+          <div class="actions">
+            <a class="btn btn-primary" href="https://github.com/akhil-neelam-ai/worth-applying">Get it on GitHub <span class="arrow" aria-hidden="true">→</span></a>
+            <a class="btn btn-quiet" href="https://console.typesafe.ai">Get a TypeSafe key</a>
+          </div>
+          <p class="privacy-line">Your resume and key stay in your browser. Only your resume and the job posting you're scoring go to TypeSafe. <a href="privacy">Privacy policy</a></p>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="site-foot">
+    <div class="wrap">
+      <span>Worth Applying? · MIT license · Not affiliated with Lenny's Jobs, TrueUp, or TypeSafe.</span>
+      <span><a href="https://github.com/akhil-neelam-ai/worth-applying">GitHub</a> · <a href="privacy">Privacy</a></span>
+    </div>
+  </footer>
+</body>
+</html>
