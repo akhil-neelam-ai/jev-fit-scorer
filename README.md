@@ -69,6 +69,33 @@ Today the extension works with TypeSafe's Jev. Create an API key at [console.typ
 
 Jev charges $0.042 per million input tokens and nothing for output. A resume plus a full job description usually runs a few thousand tokens.
 
+## Use a different decision model
+
+The extension uses TypeSafe's Jev today. Other decision models accept the same kind of request, including models on Vercel AI Gateway and models you train and serve yourself with Unsloth. Switching takes three changes:
+
+1. In [`scoring.js`](scoring.js), set `JEV_ENDPOINT` to the new model's address and `JEV_MODEL` to its name. For example, Vercel AI Gateway serves Jev at `https://ai-gateway.vercel.sh/typesafe/v1/systemone` as `typesafe-ai/jev`.
+2. In `manifest.json`, add the new address to `host_permissions`. Chrome blocks calls to any host that isn't listed there.
+3. If the provider expects a different login header, request, or response, update `callJev()` and `parseJevResponse()` in `scoring.js` to match its docs.
+
+The 1 to 10 score is calibrated to Jev. Another model rates fit on its own curve, so the same job can score differently. Until you recalibrate, treat its scores as a ranking rather than numbers on Lenny's scale. The scripts in `eval/` show how we calibrated Jev. Your resume will also go to the new provider instead of TypeSafe.
+
+Or give this prompt to your coding agent:
+
+```text
+Switch this Chrome extension from TypeSafe's Jev to the decision model [MODEL NAME],
+served at [ENDPOINT URL]. Its API docs are at [DOCS URL].
+
+1. In scoring.js, set JEV_ENDPOINT and JEV_MODEL for the new model.
+2. Add the endpoint's host to host_permissions in manifest.json.
+3. Read the provider's docs. If its auth header, request body, or response shape
+   differs from TypeSafe's, update callJev() and parseJevResponse() to match.
+   Keep the result object the same shape so the popup keeps working.
+4. Don't change buildQuestions(). Those questions are the scoring rubric.
+5. Leave CALIBRATION_KNOTS and SCORECARD_WEIGHTS alone. They were fit to Jev,
+   so remind me that the 1 to 10 scores aren't calibrated for this model yet.
+6. Run npm test and fix anything that breaks.
+```
+
 ## Privacy
 
 Your resume and API key stay in your browser's local extension storage. When you score a job, the extension sends your resume and the visible job description to api.typesafe.ai. Nothing else leaves your browser.

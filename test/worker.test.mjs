@@ -25,6 +25,9 @@ globalThis.fetch = async (url, init) => {
 };
 
 await import(new URL("../background.js", import.meta.url));
+// Read the endpoint and model from scoring.js, so swapping in another
+// decision model doesn't break this test.
+const { JEV_ENDPOINT, JEV_MODEL } = await import(new URL("../scoring.js", import.meta.url));
 const send = (msg) => new Promise((resolve) => listeners[0](msg, {}, resolve));
 
 let failures = 0;
@@ -51,7 +54,7 @@ nextResponse = good(3.2, 1000);
 let r = await send({ type: "score_job", job: jobA, manual: true });
 check("fresh score returns ok", r.ok && r.result.fit === 3.2 && r.result.cached === false, JSON.stringify(r.result?.fit));
 check("request carries v5's nine questions",
-  calls[0]?.url === "https://api.typesafe.ai/v1/systemone" && calls[0]?.body.model === "jev-latest" &&
+  calls[0]?.url === JEV_ENDPOINT && calls[0]?.body.model === JEV_MODEL &&
   Object.keys(calls[0]?.body.questions || {}).join(",") === ["fit", "why", ...DIMS.map((d) => "dim_" + d), "visa"].join(","),
   Object.keys(calls[0]?.body.questions || {}).length + " questions");
 check("scorecard parses with labels", r.result.scorecard && DIMS.every((d) => r.result.scorecard[d]) && r.result.scorecard.function.label === "Moderate" && r.result.scorecard.required_qualifications.label === "Weak",
