@@ -105,24 +105,33 @@ try {
   // The popup's body is 300px wide plus 14px padding on each side. Capture at 2x for sharp text.
   await send("Emulation.setDeviceMetricsOverride", { width: 328, height: 800, deviceScaleFactor: 2, mobile: false });
 
-  for (const [key, { title, result }] of Object.entries(SAMPLES)) {
+  // Opens the popup with one sample's result and returns the popup's height.
+  async function render(key) {
+    const { title, result } = SAMPLES[key];
     const job = { title, company: "", description: "Sample job description. ".repeat(20), pageUrl: "https://example.com/job" };
     const { result: { identifier } } = await send("Page.addScriptToEvaluateOnNewDocument", { source: stub(job, { ...result, cached: false }) });
     await send("Page.navigate", { url: `${base}/popup.html` });
-
     let ready = false;
     for (let i = 0; i < 50 && !ready; i++) {
       await sleep(100);
       ready = await evaluate(`!document.getElementById("jobScorecard").hidden && document.getElementById("jobStatus").textContent.includes("Fresh result")`);
     }
+    await send("Page.removeScriptToEvaluateOnNewDocument", { identifier });
     if (!ready) throw new Error(`The popup did not render a result for ${key}.`);
+    return evaluate("Math.ceil(document.body.getBoundingClientRect().height)");
+  }
 
-    const height = await evaluate("Math.ceil(document.body.getBoundingClientRect().height)");
+  // Every shot gets the tallest popup's height, so the page's frame never changes size between samples.
+  const heights = [];
+  for (const key of Object.keys(SAMPLES)) heights.push(await render(key));
+  const height = Math.max(...heights);
+
+  for (const key of Object.keys(SAMPLES)) {
+    await render(key);
     const shot = await send("Page.captureScreenshot", { format: "webp", quality: 92, clip: { x: 0, y: 0, width: 328, height, scale: 1 } });
     const file = `site/popup-${key}.webp`;
     writeFileSync(join(ROOT, file), Buffer.from(shot.result.data, "base64"));
     console.log(`${file}: 328x${height} at 2x, ${Math.round(Buffer.byteLength(shot.result.data, "base64") / 1024)} KB`);
-    await send("Page.removeScriptToEvaluateOnNewDocument", { identifier });
   }
   socket.close();
 } finally {
