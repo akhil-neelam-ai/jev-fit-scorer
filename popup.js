@@ -141,7 +141,7 @@ async function scoreOpenJobPage() {
     if (new URL(tab.url).hostname.endsWith("lennysjobs.com")) {
       setJobState({
         name: "Open a role first",
-        status: "Click a job title to open its full description, then reopen Jev Fit Scorer."
+        status: "Click a job title to open its full description, then click the extension again."
       });
       return;
     }
@@ -204,5 +204,5 @@ document.getElementById("rescore").addEventListener("click", scoreOpenJobPage);
 document.addEventListener("DOMContentLoaded", async () => {
   const status = await loadStatus();
   if (status?.hasKey && status?.hasResume) await scoreOpenJobPage();
-  else setJobState({ name: "Set up Jev Fit Scorer", status: "Add your API key and resume in Options." });
+  else setJobState({ name: "Set up Worth Applying?", status: "Add your API key and resume in Options." });
 });

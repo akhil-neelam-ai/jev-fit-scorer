@@ -5,7 +5,7 @@ const extensionContextAvailable =
 
 function requireExtensionContext() {
   if (extensionContextAvailable) return true;
-  const message = "Open Options from the installed Jev Fit Scorer extension, not options.html directly.";
+  const message = "Open Options from the installed Worth Applying? extension, not options.html directly.";
   $("testResult").textContent = `✕ ${message}`;
   $("saveResult").textContent = `✕ ${message}`;
   $("testKey").disabled = true;

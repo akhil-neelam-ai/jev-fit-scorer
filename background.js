@@ -1,4 +1,4 @@
-// Jev Fit Scorer — background service worker.
+// Worth Applying? background service worker.
 //
 // This file owns everything browser-specific: stored settings, the score cache,
 // the request queue, and the message interface. The scoring itself (prompt,
@@ -39,7 +39,7 @@ async function loadSettings() {
     const stored = await chrome.storage.local.get(Object.keys(DEFAULT_SETTINGS));
     settings = { ...DEFAULT_SETTINGS, ...stored };
   } catch (e) {
-    console.warn("[jev-fit] failed to load settings", e);
+    console.warn("[worth-applying] failed to load settings", e);
   }
   settingsLoaded = true;
 }

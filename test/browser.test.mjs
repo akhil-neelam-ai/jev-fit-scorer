@@ -52,7 +52,7 @@ try {
       const probe = await cdpSession(t.webSocketDebuggerUrl);
       const r = await probe.send("Runtime.evaluate", { expression: "chrome.runtime.getManifest().name", returnByValue: true });
       probe.close();
-      if (r.result?.result?.value === "Jev Fit Scorer") { sw = t; break; }
+      if (r.result?.result?.value === "Worth Applying?") { sw = t; break; }
     }
   }
   check("module service worker registered (import of scoring.js resolved)", !!sw, sw?.url);

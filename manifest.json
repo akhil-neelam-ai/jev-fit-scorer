@@ -6,13 +6,13 @@
       "48": "icon48.png"
     },
     "default_popup": "popup.html",
-    "default_title": "Jev Fit Scorer"
+    "default_title": "Worth Applying?"
   },
   "background": {
     "service_worker": "background.js",
     "type": "module"
   },
-  "description": "Scores open job descriptions with TypeSafe's Jev model.",
+  "description": "Scores how well the job posting you have open fits your resume, using TypeSafe's Jev model.",
   "host_permissions": [
     "https://api.typesafe.ai/*"
   ],
@@ -22,7 +22,7 @@
     "48": "icon48.png"
   },
   "manifest_version": 3,
-  "name": "Jev Fit Scorer",
+  "name": "Worth Applying?",
   "options_page": "options.html",
   "permissions": [
     "activeTab",
