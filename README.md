@@ -1,4 +1,4 @@
-# Worth Applying?
+# Worth Applying? Job fit scores from a decision model
 
 Most job postings aren't a ready fit. We ran one MBA candidate's resume against 100+ job postings from a job board, mostly product roles. The extension rated 29 a poor fit, 59 a medium fit, and only 13 a strong fit.
 
