@@ -1,6 +1,6 @@
 /* Worth Applying? landing page.
    Layout: one centered column with a two-part hero (copy left, the real popup right) that stacks on phones.
-   Palette follows the extension: white and ink, its orange as the only accent, gray/amber/green for score bands. */
+   Palette follows the extension: white and ink, with its orange as the only accent. */
 :root {
   --paper: #ffffff;
   --tint: #fff7ed;
@@ -11,12 +11,6 @@
   --line: #e5e7eb;
   --accent: #f97316;
   --accent-dark: #c2410c;
-  --good: #15803d;
-  --amber: #b45309;
-  /* The popup's own score colors, used by the 1 to 10 scale under it. */
-  --score-low: #6b7280;
-  --score-mid: #d97706;
-  --score-high: #16a34a;
   --display: "Bricolage Grotesque", "Avenir Next", "Segoe UI", system-ui, sans-serif;
   --body: "Source Sans 3", "Segoe UI", system-ui, -apple-system, sans-serif;
   --mono: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, monospace;
@@ -54,11 +48,12 @@ p { margin: 0; }
 .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 8px 20px rgba(31, 41, 55, 0.22); }
 .btn-primary .arrow { transition: transform 160ms ease; }
 .btn-primary:hover .arrow { transform: translateX(3px); }
+.btn-primary:hover .arrow.down { transform: translateY(2px); }
 .btn-quiet { color: var(--ink); border: 1px solid var(--line); background: var(--paper); }
 .btn-quiet:hover { border-color: var(--ink-2); }
 
-/* Hero */
-.hero { display: grid; grid-template-columns: minmax(0, 1.05fr) minmax(0, 0.95fr); gap: 56px; align-items: center; padding-block: 40px 96px; }
+/* Hero. Top-aligned, so the headline sits high on short laptop screens. */
+.hero { display: grid; grid-template-columns: minmax(0, 1.05fr) minmax(0, 0.95fr); gap: 56px; align-items: start; padding-block: 40px 96px; }
 .hero-copy { display: grid; gap: 24px; }
 .hero-copy > * { animation: rise 700ms cubic-bezier(0.2, 0.7, 0.2, 1) both; }
 .hero-copy > :nth-child(2) { animation-delay: 90ms; }
@@ -66,7 +61,7 @@ p { margin: 0; }
 .hero-copy > :nth-child(4) { animation-delay: 270ms; }
 .hero-copy > :nth-child(5) { animation-delay: 360ms; }
 .lede { font-size: 1.25rem; color: var(--ink-2); max-width: 32ch; }
-.fine { font-size: 0.92rem; color: var(--muted); }
+.fine { font-size: 0.92rem; color: var(--muted); max-width: 44ch; }
 .hero-visual { display: grid; gap: 16px; justify-items: center; animation: rise 800ms 220ms cubic-bezier(0.2, 0.7, 0.2, 1) both; }
 
 /* Sample picker above the popup. Hidden without JavaScript, since it does nothing then. */
@@ -82,23 +77,6 @@ html:not(.js) .picker { display: none; }
 .popup-frame { display: grid; width: min(100%, 330px); background: #fff; border: 1px solid var(--line); border-radius: 14px; overflow: hidden; box-shadow: 0 24px 60px rgba(124, 45, 18, 0.12), 0 2px 6px rgba(0, 0, 0, 0.04); }
 .shot { grid-area: 1 / 1; align-self: start; display: block; width: 100%; height: auto; opacity: 0; transition: opacity 240ms ease; }
 .shot.is-on { opacity: 1; }
-
-/* The 1 to 10 scale under the popup: ten cells in the popup's colors, a ring on the score, and the four recommendation tiers. */
-.scale { --gap: 3px; width: min(100%, 330px); }
-.scale-bar { display: grid; grid-template-columns: repeat(10, minmax(0, 1fr)); gap: var(--gap); height: 10px; }
-.scale-bar span { border-radius: 3px; background: var(--score-low); }
-.scale-bar span:nth-child(n+4) { background: var(--score-mid); }
-.scale-bar span:nth-child(n+7) { background: var(--score-high); }
-.scale-track { position: relative; height: 0; }
-/* Centers the ring on cell --s: ten equal cells share the row with nine gaps. */
-.marker { position: absolute; top: -14px; left: calc((100% - 9 * var(--gap)) / 10 * (var(--s) - 0.5) + var(--gap) * (var(--s) - 1)); width: 18px; height: 18px; margin-left: -9px; border-radius: 50%; background: var(--paper); border: 3px solid var(--ink); transition: left 600ms cubic-bezier(0.2, 0.7, 0.2, 1); animation: slide 1100ms 700ms cubic-bezier(0.2, 0.7, 0.2, 1) backwards; }
-.scale-labels { display: grid; grid-template-columns: repeat(10, minmax(0, 1fr)); column-gap: var(--gap); margin-top: 10px; font-size: 0.74rem; line-height: 1.3; color: var(--muted); }
-.scale-labels span { padding-right: 4px; transition: color 200ms ease; }
-.scale-labels span:first-child, .scale-labels span:last-child { grid-column: span 3; }
-.scale-labels span:nth-child(2), .scale-labels span:nth-child(3) { grid-column: span 2; }
-.scale-labels b { display: block; font-family: var(--mono); font-size: 0.68rem; font-weight: 500; }
-/* Color only: a bolder label would rewrap and shift the caption on every switch. */
-.scale-labels .on { color: var(--ink); }
 .caption { font-size: 0.85rem; color: var(--muted); text-align: center; }
 
 /* Sections */
@@ -106,19 +84,6 @@ section.band { padding-block: 96px; border-top: 1px solid var(--line); }
 section.band.tinted { background: var(--tint); border-top: 0; }
 .section-head { display: grid; gap: 14px; margin-bottom: 40px; }
 .section-head p:not(.label) { color: var(--ink-2); font-size: 1.12rem; max-width: 60ch; }
-
-/* Fit split bar */
-.split { display: flex; height: 64px; gap: 3px; border-radius: 14px; overflow: hidden; }
-.split > div { display: flex; align-items: center; padding-inline: 14px; color: #fff; font-weight: 700; font-family: var(--display); font-size: 1.25rem; min-width: 0; white-space: nowrap; }
-.split .poor { background: #6b7280; flex: 29; }
-.split .medium { background: var(--amber); flex: 59; }
-.split .strong-fit { background: var(--good); flex: 13; justify-content: center; padding-inline: 0; }
-.split-legend { display: flex; flex-wrap: wrap; gap: 8px 28px; margin-top: 14px; font-size: 0.95rem; color: var(--ink-2); }
-.split-legend span::before { content: ""; display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 8px; background: currentColor; vertical-align: 0; }
-.split-legend .k-poor::before { background: #6b7280; }
-.split-legend .k-medium::before { background: var(--amber); }
-.split-legend .k-strong::before { background: var(--good); }
-.punch { margin-top: 36px; font-family: var(--display); font-size: clamp(1.4rem, 3vw, 1.9rem); font-weight: 700; letter-spacing: -0.015em; max-width: 30ch; }
 
 /* Steps */
 .steps { list-style: none; counter-reset: step; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 40px; }
@@ -168,8 +133,14 @@ code { font-family: var(--mono); font-size: 0.88em; background: var(--tint); bor
 .doc p { color: var(--ink-2); }
 
 @keyframes rise { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
-@keyframes slide { from { left: 0; } }
 
+/* Side by side, the popup shrinks on short screens so all of it fits in the first view. */
+@media (min-width: 861px) {
+  .popup-frame { width: min(100%, clamp(260px, 60vh - 160px, 330px)); }
+}
+@media (min-width: 861px) and (max-height: 700px) {
+  .hero { padding-top: 16px; }
+}
 @media (max-width: 860px) {
   .hero { grid-template-columns: minmax(0, 1fr); gap: 48px; padding-block: 16px 72px; }
   .steps, .numbers { grid-template-columns: minmax(0, 1fr); gap: 28px; }
@@ -179,14 +150,15 @@ code { font-family: var(--mono); font-size: 0.88em; background: var(--tint); bor
 @media (max-width: 560px) {
   body { font-size: 17px; }
   .dims-list div { grid-template-columns: minmax(0, 1fr); gap: 2px; }
-  .split > div { font-size: 1rem; padding-inline: 10px; }
   .install .actions .btn { flex: 1 1 100%; justify-content: center; }
   .perms td:first-child { white-space: normal; }
+  /* Keeps the three sample buttons on one row down to 375px wide. */
+  .picker-buttons { gap: 6px; }
+  .picker button { padding-inline: 12px; }
 }
-/* app.js adds .reveal, then .in once the fit bar is on screen, so the bar draws from left to right. */
-@media (prefers-reduced-motion: no-preference) {
-  .reveal .split { clip-path: inset(0 0 0 0); transition: clip-path 1300ms cubic-bezier(0.65, 0, 0.35, 1); }
-  .reveal .split:not(.in) { clip-path: inset(0 100% 0 0); }
+/* Touch-size sample buttons on phones and touch screens. */
+@media (max-width: 560px), (pointer: coarse) {
+  .picker button { min-height: 44px; }
 }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation: none !important; transition: none !important; }
