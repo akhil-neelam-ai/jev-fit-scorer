@@ -25,7 +25,7 @@
   <link rel="apple-touch-icon" href="apple-touch-icon.png">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700&family=IBM+Plex+Mono:wght@400;500&family=Source+Sans+3:wght@400;600;700&display=swap">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700;12..96,800&family=IBM+Plex+Mono:wght@400;500&family=Source+Sans+3:wght@400;600;700&display=swap">
   <link rel="stylesheet" href="styles.css">
   <script src="app.js" defer></script>
   <script type="application/ld+json">
@@ -57,129 +57,197 @@
   </script>
 </head>
 <body>
-  <header class="wrap site-head">
+  <header class="shell nav">
     <a class="brand" href="/" aria-label="Worth Applying? home"><span class="brand-mark" aria-hidden="true">?</span>Worth Applying?</a>
-    <a class="head-link" href="https://github.com/akhil-neelam-ai/worth-applying">GitHub</a>
+    <nav class="nav-links" aria-label="Main">
+      <a href="#how">How it works</a>
+      <a href="#accuracy">Accuracy</a>
+      <a href="https://github.com/akhil-neelam-ai/worth-applying">GitHub</a>
+    </nav>
+    <a class="btn btn-primary btn-small" href="#install">Install it</a>
   </header>
 
   <main>
-    <section class="wrap hero" aria-labelledby="hero-title">
-      <div class="hero-copy">
-        <p class="label">Chrome extension</p>
-        <h1 id="hero-title">Know if a job fits before you apply.</h1>
-        <p class="lede">Worth Applying? scores any job posting against your resume in about a second.</p>
-        <div class="actions">
-          <a class="btn btn-primary" href="#install">Install it <span class="arrow" aria-hidden="true">→</span></a>
-          <a class="btn btn-quiet" href="#how">How it works</a>
-        </div>
-        <p class="fine">Works in Chrome, Edge, Brave, and Comet. It's open source and runs on your own TypeSafe API key.</p>
+    <section class="shell hero" aria-labelledby="hero-title">
+      <h1 id="hero-title">Know if a job fits <span class="chip" aria-hidden="true"><span class="chip-cells"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></span>7/10</span> before you apply.</h1>
+      <p class="lede">Worth Applying? scores any job posting against your resume in about a second.</p>
+      <div class="actions">
+        <a class="btn btn-primary" href="#install">Install it <span class="arrow" aria-hidden="true">→</span></a>
+        <a class="btn-link" href="#how">See how it works <span aria-hidden="true">↓</span></a>
       </div>
+      <dl class="facts">
+        <div><dt>Works in</dt><dd>Chrome, Edge, Brave, Comet</dd></div>
+        <div><dt>Costs</dt><dd>About 2¢ per 100 jobs</dd></div>
+        <div><dt>Decision model</dt><dd>Jev, with your own API key</dd></div>
+      </dl>
+    </section>
 
-      <div class="hero-visual">
-        <div class="picker" role="group" aria-labelledby="picker-label">
-          <span class="picker-label" id="picker-label">Same resume, three postings</span>
-          <div class="picker-buttons">
-            <button type="button" data-sample="apm" data-summary="Associate Product Manager: fit score 7 out of 10, apply and tailor." aria-pressed="true">Associate PM</button>
-            <button type="button" data-sample="growth" data-summary="Product Manager, Growth Strategy: fit score 4 out of 10, apply if interested." aria-pressed="false">Growth PM</button>
-            <button type="button" data-sample="engineer" data-summary="Lead, Software Engineer: fit score 2 out of 10, deprioritize." aria-pressed="false">Lead engineer</button>
+    <section class="shell samples" aria-labelledby="samples-title">
+      <div class="samples-panel">
+        <div class="samples-copy">
+          <h2 id="samples-title">The same resume can score a 7 or a 2.</h2>
+          <p>Click a job to see what the extension showed.</p>
+          <div class="sample-list" role="group" aria-label="Sample jobs">
+            <button type="button" class="sample" data-sample="apm" data-summary="Associate Product Manager: fit score 7 out of 10, apply and tailor." aria-pressed="true">
+              <span class="sample-role">Associate Product Manager</span>
+              <span class="sample-rec">Apply and tailor</span>
+              <span class="sample-score score-high">7<small>/10</small></span>
+            </button>
+            <button type="button" class="sample" data-sample="growth" data-summary="Product Manager, Growth Strategy: fit score 4 out of 10, apply if interested." aria-pressed="false">
+              <span class="sample-role">Product Manager, Growth Strategy</span>
+              <span class="sample-rec">Apply if interested</span>
+              <span class="sample-score score-mid">4<small>/10</small></span>
+            </button>
+            <button type="button" class="sample" data-sample="engineer" data-summary="Lead, Software Engineer: fit score 2 out of 10, deprioritize." aria-pressed="false">
+              <span class="sample-role">Lead, Software Engineer</span>
+              <span class="sample-rec">Deprioritize</span>
+              <span class="sample-score score-low">2<small>/10</small></span>
+            </button>
           </div>
+          <p class="caption">Screenshots from our test run. We removed the company names.</p>
         </div>
         <!-- Screenshots of the real popup. Regenerate with scripts/popup-shots.mjs after changing the popup. -->
-        <div class="popup-frame">
-          <img class="shot is-on" data-shot="apm" src="popup-apm.webp" width="328" height="549" fetchpriority="high" alt="The Worth Applying? popup on an Associate Product Manager posting: fit score 7/10, apply and tailor. Confidence 51%, speed 0.1s, cost $0.00014. Required qualifications, core work, role level, and company stage are strong. Customer type and domain are moderate. Main factor: role level.">
-          <img class="shot" data-shot="growth" data-src="popup-growth.webp" width="328" height="549" aria-hidden="true" alt="The Worth Applying? popup on a Product Manager, Growth Strategy posting: fit score 4/10, apply if interested. Confidence 82%, speed 0.1s, cost $0.00015. Required qualifications are weak. The other five parts are moderate. Main factor: required qualifications.">
-          <img class="shot" data-shot="engineer" data-src="popup-engineer.webp" width="328" height="549" aria-hidden="true" alt="The Worth Applying? popup on a Lead, Software Engineer posting: fit score 2/10, deprioritize. Confidence 98%, speed 0.1s, cost $0.00018. Required qualifications, core work, role level, and domain are weak. Customer type and company stage are moderate. Main factor: required qualifications.">
-        </div>
-        <p class="caption">Screenshots from our test run. We removed the company names.</p>
-        <p class="sr-only" aria-live="polite" data-live></p>
-      </div>
-    </section>
-
-    <section class="band" id="how" aria-labelledby="how-title">
-      <div class="wrap">
-        <div class="section-head">
-          <p class="label">How it works</p>
-          <h2 id="how-title">Set it up once. Then one click per job.</h2>
-        </div>
-        <ol class="steps">
-          <li><h3>Paste your resume once.</h3><p>It stays in your browser.</p></li>
-          <li><h3>Open any job posting.</h3><p>Any page that shows the full job description works.</p></li>
-          <li><h3>Click the icon.</h3><p>You get a score out of 10, a recommendation, and a six-part scorecard.</p></li>
-        </ol>
-        <div class="dims">
-          <div class="dims-note">
-            <h3>What the score looks at</h3>
-            <p>Jev, a decision model from TypeSafe, rates these six parts. They're listed from most to least weight.</p>
-            <p>Visa sponsorship gets its own estimate and never lowers your fit score.</p>
+        <div class="samples-visual">
+          <div class="popup-frame">
+            <img class="shot is-on" data-shot="apm" src="popup-apm.webp" width="328" height="404" fetchpriority="high" alt="The Worth Applying? popup on an Associate Product Manager posting: apply and tailor, fit 7/10. Required qualifications, core work, role level, and company stage are strong. Customer type and domain are moderate. Main factor: role level. Visa sponsorship: likely, 79%. 51% confidence, 0.1 seconds, $0.00014.">
+            <img class="shot" data-shot="growth" data-src="popup-growth.webp" width="328" height="404" aria-hidden="true" alt="The Worth Applying? popup on a Product Manager, Growth Strategy posting: apply if interested, fit 4/10. Required qualifications are weak. The other five parts are moderate. Main factor: required qualifications. Visa sponsorship: unlikely, 17%. 82% confidence, 0.1 seconds, $0.00015.">
+            <img class="shot" data-shot="engineer" data-src="popup-engineer.webp" width="328" height="404" aria-hidden="true" alt="The Worth Applying? popup on a Lead, Software Engineer posting: deprioritize, fit 2/10. Required qualifications, core work, role level, and domain are weak. Customer type and company stage are moderate. Main factor: required qualifications. Visa sponsorship: unlikely, 13%. 98% confidence, 0.1 seconds, $0.00018.">
           </div>
-          <dl class="dims-list">
-            <div><dt>Required qualifications</dt><dd>The skills and years of experience the posting asks for</dd></div>
-            <div><dt>Core work</dt><dd>Whether you've done this kind of work</dd></div>
-            <div><dt>Role level</dt><dd>Whether your scope matches the role's seniority</dd></div>
-            <div><dt>Customer type</dt><dd>The kind of users or customers you've served</dd></div>
-            <div><dt>Company stage</dt><dd>Startup, growth company, enterprise, or public sector</dd></div>
-            <div><dt>Domain</dt><dd>The industry, which matters least</dd></div>
-          </dl>
         </div>
-      </div>
-    </section>
-
-    <section class="band" aria-labelledby="check-title">
-      <div class="wrap">
-        <div class="section-head">
-          <p class="label">How we checked it</p>
-          <h2 id="check-title">Close to a full AI review.</h2>
-          <p>We scored 101 postings, mostly product roles, and compared each score with the "Am I a fit?" review on Lenny's Jobs.</p>
-        </div>
-        <div class="numbers">
-          <div class="number"><b>50 of 101</b><span>Same score as Lenny's Jobs</span></div>
-          <div class="number"><b>93 of 101</b><span>Same score or 1 point off</span></div>
-          <div class="number"><b>0.6</b><span>Points apart on average</span></div>
-        </div>
-        <p class="footnote">All 101 used one MBA candidate's resume, so your results may differ.</p>
+        <p class="sr-only" aria-live="polite" data-live></p>
       </div>
     </section>
 
     <!-- Demo video: add demo.mp4 to this folder, add src="demo.mp4" to the video, then remove the hidden attribute.
          Leave src off until the file exists. Browsers fetch it even while the section is hidden. -->
-    <section class="band demo" id="demo" aria-labelledby="demo-title" hidden>
-      <div class="wrap">
-        <div class="section-head">
-          <p class="label">Demo</p>
-          <h2 id="demo-title">See it score a real posting.</h2>
-        </div>
-        <video controls preload="metadata" playsinline></video>
+    <section class="shell demo" id="demo" aria-labelledby="demo-title" hidden>
+      <h2 id="demo-title" class="sr-only">See it score a real posting</h2>
+      <video controls preload="metadata" playsinline></video>
+    </section>
+
+    <section class="shell proof" id="accuracy" aria-labelledby="accuracy-title">
+      <div class="proof-copy">
+        <h2 class="label" id="accuracy-title">How we calculate scores</h2>
+        <p>Jev rates the overall fit and six parts of the match. We blend them into a 1&nbsp;to&nbsp;10 score, tuned against full reviews from <a href="https://www.lennysjobs.com/">Lenny's Jobs</a>.</p>
+        <p class="footnote">Tested on one MBA candidate's resume, mostly product roles. Your results may differ.</p>
+        <a class="btn-link" href="https://github.com/akhil-neelam-ai/worth-applying#readme">Read the method on GitHub <span aria-hidden="true">→</span></a>
+      </div>
+      <div class="proof-card">
+        <b>93 of 101</b>
+        <div class="dots" data-dots="93/101" aria-hidden="true"></div>
+        <p>Scores came out the same as Lenny's Jobs, or 1 point off.</p>
       </div>
     </section>
 
-    <section class="band tinted" id="install" aria-labelledby="install-title">
-      <div class="wrap install">
-        <div class="section-head">
+    <section class="how" id="how" aria-labelledby="how-title">
+      <div class="shell">
+        <div class="how-head">
+          <p class="label">How it works</p>
+          <h2 id="how-title">Set it up once. Then <span class="hl">one click</span> per job.</h2>
+        </div>
+        <ol class="stack">
+          <li class="stack-card card-peach" style="--i: 0">
+            <div class="stack-copy">
+              <span class="step" aria-hidden="true">1</span>
+              <h3>Paste your resume once.</h3>
+              <p>It stays in your browser. If you need visa sponsorship, leave that box on. You get a separate estimate that never lowers your fit score.</p>
+            </div>
+            <div class="mock" aria-hidden="true">
+              <div class="mock-bar"><span></span><span></span><span></span><em>Worth Applying? Settings</em></div>
+              <div class="mock-body">
+                <p class="mock-label">TypeSafe API key</p>
+                <div class="mock-input">••••••••••••••••••••</div>
+                <p class="mock-label">Your resume</p>
+                <div class="mock-lines"><i style="--w: 94%"></i><i style="--w: 80%"></i><i style="--w: 88%"></i><i style="--w: 62%"></i><i style="--w: 90%"></i><i style="--w: 74%"></i></div>
+                <p class="mock-check"><span class="mock-box">✓</span>I need US visa sponsorship</p>
+                <span class="mock-btn">Save</span>
+              </div>
+            </div>
+          </li>
+          <li class="stack-card card-mint" style="--i: 1">
+            <div class="stack-copy">
+              <span class="step" aria-hidden="true">2</span>
+              <h3>Open any job posting.</h3>
+              <p>Any page that shows the full job description works, from company career sites to job boards.</p>
+            </div>
+            <div class="mock" aria-hidden="true">
+              <div class="mock-bar"><span></span><span></span><span></span><em class="mock-url">careers.example.com/product-manager</em><span class="mock-ext"><img src="ext-icon.png" width="22" height="22" alt=""></span></div>
+              <div class="mock-body">
+                <p class="mock-kicker">Product · Full time</p>
+                <p class="mock-title">Product Manager</p>
+                <span class="mock-apply">Apply now</span>
+                <p class="mock-label">About the role</p>
+                <div class="mock-lines"><i style="--w: 96%"></i><i style="--w: 84%"></i><i style="--w: 90%"></i><i style="--w: 58%"></i></div>
+                <p class="mock-label">What you'll need</p>
+                <div class="mock-lines"><i style="--w: 78%"></i><i style="--w: 86%"></i><i style="--w: 66%"></i></div>
+              </div>
+            </div>
+          </li>
+          <li class="stack-card card-ink" style="--i: 2">
+            <div class="stack-copy">
+              <span class="step" aria-hidden="true">3</span>
+              <h3>Click the icon.</h3>
+              <p>You get a score out of 10, a recommendation, and a six-part scorecard. Jev, a decision model from TypeSafe, rates each part.</p>
+            </div>
+            <div class="mock mock-click" role="img" aria-label="A browser window. The Worth Applying? icon in the toolbar is clicked, and its popup is open over the job posting, showing Apply and tailor, fit 7 out of 10.">
+              <div class="mock-bar"><span></span><span></span><span></span><em class="mock-url">careers.example.com/product-manager</em><span class="mock-ext is-clicked"><img src="ext-icon.png" width="22" height="22" alt=""></span></div>
+              <div class="mock-body">
+                <p class="mock-kicker">Product · Full time</p>
+                <p class="mock-title">Product Manager</p>
+                <span class="mock-apply">Apply now</span>
+                <div class="mock-lines"><i style="--w: 92%"></i><i style="--w: 78%"></i><i style="--w: 86%"></i><i style="--w: 60%"></i><i style="--w: 82%"></i><i style="--w: 70%"></i></div>
+              </div>
+              <img class="mock-popup" src="popup-apm.webp" width="328" height="404" loading="lazy" alt="">
+              <svg class="mock-cursor" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 2.5 L5 19 L9.2 15.2 L12 21.5 L14.6 20.4 L11.9 14.2 L17.5 14 Z" /></svg>
+            </div>
+          </li>
+        </ol>
+      </div>
+    </section>
+
+    <section class="shell install" id="install" aria-labelledby="install-title">
+      <div class="install-card">
+        <div class="install-copy">
           <p class="label">Try it now</p>
           <h2 id="install-title">Install it in about five minutes.</h2>
           <p>It isn't in the Chrome Web Store yet, so you load it yourself.</p>
-        </div>
-        <div class="install-side">
-          <ol>
-            <li>Download the ZIP and unzip it.</li>
-            <li>Open <code>chrome://extensions</code>, turn on Developer mode, click Load unpacked, and pick the unzipped folder.</li>
-            <li>Sign in to TypeSafe and create an API key. Its model, Jev, does the scoring for about 2 cents per 100 jobs.</li>
-            <li>Click the extension icon, then Options. Add your key and your resume as plain text.</li>
-          </ol>
           <div class="actions">
             <a class="btn btn-primary" href="https://github.com/akhil-neelam-ai/worth-applying/archive/refs/heads/main.zip">Download the ZIP <span class="arrow down" aria-hidden="true">↓</span></a>
             <a class="btn btn-quiet" href="https://console.typesafe.ai" target="_blank" rel="noopener">Get a TypeSafe key <span aria-hidden="true">↗</span><span class="sr-only"> (opens in a new tab)</span></a>
           </div>
           <p class="privacy-line">Your resume and key live in your browser. When you score a job, only your resume and that posting go to TypeSafe. <a href="privacy">Privacy policy</a></p>
         </div>
+        <ol class="install-steps">
+          <li>Download the ZIP and unzip it.</li>
+          <li>Open <code>chrome://extensions</code>, turn on Developer mode, click Load unpacked, and pick the unzipped folder.</li>
+          <li>Sign in to TypeSafe and create an API key. Its model, Jev, does the scoring for about 2 cents per 100 jobs.</li>
+          <li>Click the extension icon, then Settings. Add your key and your resume as plain text.</li>
+        </ol>
       </div>
     </section>
   </main>
 
-  <footer class="site-foot">
-    <div class="wrap">
-      <span>Worth Applying? · MIT license · Not affiliated with Lenny's Jobs, TrueUp, or TypeSafe.</span>
-      <span><a href="https://github.com/akhil-neelam-ai/worth-applying">GitHub</a> · <a href="privacy">Privacy</a></span>
+  <footer class="foot">
+    <div class="shell foot-grid">
+      <div class="foot-brand">
+        <a class="brand" href="/"><span class="brand-mark" aria-hidden="true">?</span>Worth Applying?</a>
+        <p>Know if a job fits before you apply.</p>
+      </div>
+      <nav class="foot-col" aria-label="On this page">
+        <p class="foot-title">On this page</p>
+        <a href="#how">How it works</a>
+        <a href="#accuracy">Accuracy</a>
+        <a href="#install">Install</a>
+      </nav>
+      <nav class="foot-col" aria-label="Project">
+        <p class="foot-title">Project</p>
+        <a href="https://github.com/akhil-neelam-ai/worth-applying">GitHub</a>
+        <a href="privacy">Privacy policy</a>
+        <a href="https://github.com/akhil-neelam-ai/worth-applying/blob/main/LICENSE">MIT license</a>
+      </nav>
+    </div>
+    <div class="shell">
+      <p class="foot-base">Not affiliated with Lenny's Jobs, TrueUp, or TypeSafe.</p>
     </div>
   </footer>
 </body>

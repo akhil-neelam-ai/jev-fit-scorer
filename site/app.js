@@ -1,4 +1,4 @@
-// Worth Applying? landing page: switches the sample popup in the hero.
+// Worth Applying? landing page: switches the sample popup in the product panel.
 // The page reads fine without this file.
 const shots = [...document.querySelectorAll("[data-shot]")];
 const buttons = [...document.querySelectorAll("[data-sample]")];
@@ -27,3 +27,13 @@ function select(button) {
 }
 
 for (const button of buttons) button.addEventListener("click", () => select(button));
+
+// The dot chart on the accuracy card: data-dots="93/101" draws 101 dots with the first 93 filled.
+for (const chart of document.querySelectorAll("[data-dots]")) {
+  const [filled, total] = chart.dataset.dots.split("/").map(Number);
+  for (let i = 0; i < total; i++) {
+    const dot = document.createElement("i");
+    if (i >= filled) dot.className = "off";
+    chart.append(dot);
+  }
+}
