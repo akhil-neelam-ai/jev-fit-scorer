@@ -18,9 +18,14 @@ globalThis.chrome = {
     set: async (obj) => { Object.assign(store, structuredClone(obj)); }
   } },
   runtime: {
-    onMessage: { addListener: (fn) => listeners.push(fn) }
-  }
+    onMessage: { addListener: (fn) => listeners.push(fn) },
+    onInstalled: { addListener: (fn) => installListeners.push(fn) },
+    getURL: (path) => `chrome-extension://test-id/${path}`
+  },
+  tabs: { create: async (properties) => { tabsOpened.push(properties); return { id: 1 }; } }
 };
+const installListeners = [];
+const tabsOpened = [];
 
 // The worker logs raw errors with console.warn. Keep them for checks.
 const warnings = [];
@@ -97,6 +102,8 @@ await Promise.all([
 check("cold start reads storage once", storageReads === 1, `reads=${storageReads}`);
 check("both cold-start saves persist", store.apiKey === "key-real" && store.resume === "MBA, 4y analytics",
   JSON.stringify({ apiKey: store.apiKey, resume: store.resume }));
+const beforeScoring = await send({ type: "get_status" });
+check("get_status says no job is scored yet", beforeScoring.hasScore === false, JSON.stringify(beforeScoring));
 
 nextResponse = good(3.2, 1000);
 let r = await send({ type: "score_job", job: jobA });
@@ -157,8 +164,8 @@ for (const [name, reply] of invalidReplies) {
 check("the raw reason is logged for debugging", warnings.some((w) => w.includes("Jev returned an invalid fit score.")), warnings.at(-1));
 
 const s = await send({ type: "get_status" });
-check("get_status says only whether setup is done",
-  JSON.stringify(s) === JSON.stringify({ ok: true, hasKey: true, hasResume: true }), JSON.stringify(s));
+check("get_status says only whether setup is done and a job is scored",
+  JSON.stringify(s) === JSON.stringify({ ok: true, hasKey: true, hasResume: true, hasScore: true }), JSON.stringify(s));
 const g = await send({ type: "get_settings" });
 check("get_settings sends the three Settings fields and no cache",
   g.ok && JSON.stringify(g.settings) === JSON.stringify({ apiKey: "key-real", resume: "MBA, 4y analytics", needsSponsorship: true }),
@@ -236,6 +243,15 @@ before = calls.length;
 r = await send({ type: "score_job", job: capJobs[0] });
 check("a dropped score is scored fresh", r.ok && r.result.cached === false && calls.length === before + 1,
   `new fetch calls=${calls.length - before}`);
+
+// A new install opens the setup guide. An update, a browser update or a
+// reload of the extension doesn't.
+check("the worker listens for installs", installListeners.length === 1, `${installListeners.length} listeners`);
+installListeners[0]?.({ reason: "install" });
+check("a new install opens the setup guide",
+  JSON.stringify(tabsOpened) === JSON.stringify([{ url: "chrome-extension://test-id/welcome.html" }]), JSON.stringify(tabsOpened));
+for (const reason of ["update", "chrome_update", "shared_module_update"]) installListeners[0]?.({ reason, previousVersion: "1.2.0" });
+check("updates don't open the guide", tabsOpened.length === 1, JSON.stringify(tabsOpened));
 
 console.log(`\n${failures === 0 ? "ALL WORKER CHECKS PASSED" : failures + " FAILURE(S)"}`);
 process.exit(failures ? 1 : 0);

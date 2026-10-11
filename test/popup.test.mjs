@@ -51,6 +51,7 @@ const stub = ({ url = JOB.pageUrl, page = JOB, extractFails = false, replies = {
       }
     },
     runtime: {
+      getURL: (path) => "chrome-extension://test-id/" + path,
       openOptionsPage() { calls.push({ api: "openOptionsPage" }); },
       sendMessage: (message) => { calls.push({ api: "sendMessage", ...message }); return answer(plan[message.type]); }
     }
@@ -102,9 +103,14 @@ const show = (shown) => `${shown.state} | ${shown.name} | ${shown.status}`;
 try {
   await open({ replies: { get_status: { ok: true, hasKey: false, hasResume: false } } });
   let shown = await card(inState("setup"));
-  check("setup: no key or resume points to Settings",
-    shown.name === "Set up Worth Applying?" && shown.status === "Add your TypeSafe API key and resume in Settings." &&
-    shown.buttons === "Open Settings", show(shown));
+  check("setup: no key or resume offers the setup guide",
+    shown.name === "Set up Worth Applying?" && shown.status === "Add your TypeSafe API key and resume to start scoring." &&
+    shown.buttons === "Start setup", show(shown));
+  await chrome.evaluate(`document.getElementById("setupGuide").click()`);
+  shown = await card(`window.calls.some((c) => c.api === "tabs.create")`);
+  check("setup: Start setup opens the guide in a tab",
+    shown.calls.filter((c) => c.api === "tabs.create").map((c) => c.url).join() === "chrome-extension://test-id/welcome.html",
+    JSON.stringify(shown.calls.at(-1)));
 
   await open({ replies: { score_job: "never" } });
   shown = await card(`${inState("loading")} && document.getElementById("jobName").textContent === ${JSON.stringify(JOB.title)}`);

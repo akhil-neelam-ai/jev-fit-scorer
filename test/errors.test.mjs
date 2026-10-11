@@ -26,7 +26,8 @@ globalThis.chrome = {
     }
   } },
   runtime: {
-    onMessage: { addListener: (fn) => listeners.push(fn) }
+    onMessage: { addListener: (fn) => listeners.push(fn) },
+    onInstalled: { addListener: () => {} }
   }
 };
 

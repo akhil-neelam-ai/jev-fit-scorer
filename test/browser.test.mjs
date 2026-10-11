@@ -65,6 +65,30 @@ try {
   const mf = await swSession.send("Runtime.evaluate", { expression: "JSON.stringify(chrome.runtime.getManifest().background)", returnByValue: true });
   check("worker runs with type: module", mf.result?.result?.value?.includes('"module"'), mf.result?.result?.value);
 
+  // A fresh profile is a new install, so the worker opens the setup guide.
+  let guide = null;
+  for (let i = 0; i < 20 && !guide; i++) {
+    await sleep(250);
+    guide = (await json("/json/list")).find((t) => t.type === "page" && t.url === `chrome-extension://${extId}/welcome.html`);
+  }
+  check("installing opens the setup guide", !!guide, guide?.url);
+  if (guide) {
+    const g = await cdpSession(guide.webSocketDebuggerUrl);
+    await g.send("Runtime.enable"); await g.send("Log.enable");
+    // The intro shows once the worker answers, and "false" comes from the toolbar.
+    let shown = "";
+    for (let i = 0; i < 20 && shown !== "intro | false"; i++) {
+      await sleep(250);
+      const out = await g.send("Runtime.evaluate", { expression: "document.body.dataset.screen + ' | ' + document.body.dataset.pinned", returnByValue: true });
+      shown = out.result?.result?.value || "";
+    }
+    check("the guide reads the worker and the toolbar", shown === "intro | false", shown);
+    const font = await g.send("Runtime.evaluate", { expression: "document.fonts.ready.then(() => document.fonts.check(\"700 40px 'Bricolage Grotesque'\"))", awaitPromise: true, returnByValue: true });
+    check("the guide's font loads from inside the extension", font.result?.result?.value === true, JSON.stringify(font.result?.result?.value));
+    check("the guide has no console errors", g.errors.length === 0, g.errors.join(" ; ").slice(0, 300));
+    g.close();
+  }
+
   // Opens an extension page in a new tab, the same path Chrome uses for
   // Settings, and polls the probe until it matches. Returns the page's
   // session and the probe's last value, or null if no tab opened.

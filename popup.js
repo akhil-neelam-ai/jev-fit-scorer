@@ -16,7 +16,7 @@ function setJobState({ state, title = "", name = "", status = "", result = null,
   $("jobResult").hidden = !result;
   if (result) renderResult(result);
   $("rescore").hidden = !retry;
-  $("setupSettings").hidden = state !== "setup";
+  $("setupGuide").hidden = state !== "setup";
   $("scoreAnyway").hidden = state !== "not-job";
   $("openEmbedded").hidden = state !== "embedded";
   document.body.dataset.state = state;
@@ -186,7 +186,7 @@ async function start() {
   if (status.hasKey && status.hasResume) {
     await scoreOpenJobPage();
   } else {
-    setJobState({ state: "setup", name: "Set up Worth Applying?", status: "Add your TypeSafe API key and resume in Settings." });
+    setJobState({ state: "setup", name: "Set up Worth Applying?", status: "Add your TypeSafe API key and resume to start scoring." });
   }
 }
 
@@ -203,9 +203,8 @@ async function runOnce(task) {
   }
 }
 
-const openSettings = () => chrome.runtime.openOptionsPage();
-$("openOptions").addEventListener("click", openSettings);
-$("setupSettings").addEventListener("click", openSettings);
+$("openOptions").addEventListener("click", () => chrome.runtime.openOptionsPage());
+$("setupGuide").addEventListener("click", () => chrome.tabs.create({ url: chrome.runtime.getURL("welcome.html") }));
 // Score again checks the settings first, so it also recovers from a status error.
 $("rescore").addEventListener("click", () => runOnce(start));
 $("scoreAnyway").addEventListener("click", () => runOnce(() => scoreJob(pageToScore)));

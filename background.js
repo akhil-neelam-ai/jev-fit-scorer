@@ -183,6 +183,15 @@ async function scoreAndCacheJob(job, key) {
   return { ...result, cached: false };
 }
 
+// ---- install ----
+
+// A new install opens the setup guide. Updates and reloads don't.
+chrome.runtime.onInstalled.addListener(({ reason }) => {
+  if (reason !== "install") return;
+  chrome.tabs.create({ url: chrome.runtime.getURL("welcome.html") })
+    .catch((e) => console.warn("[worth-applying] couldn't open the setup guide", e));
+});
+
 // ---- message interface ----
 chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
   (async () => {
@@ -206,10 +215,12 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
       });
       sendResponse({ ok: true, usage: data.usage || null });
     } else if (msg.type === "get_status") {
+      // hasScore tells the setup guide that a first job has been scored.
       sendResponse({
         ok: true,
         hasKey: !!settings.apiKey,
-        hasResume: !!settings.resume.trim()
+        hasResume: !!settings.resume.trim(),
+        hasScore: Object.keys(settings.cache).length > 0
       });
     } else if (msg.type === "get_settings") {
       // Only what the Settings page shows. The score cache stays here.

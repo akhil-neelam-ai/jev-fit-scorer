@@ -26,6 +26,11 @@ export const ALLOWLIST = [
   "popup.js",
   "options.html",
   "options.js",
+  "welcome.html",
+  "welcome.js",
+  "welcome.css",
+  "fonts/bricolage-grotesque.css",
+  "fonts/bricolage-grotesque.woff2",
   "styles.css",
   "icon16.png",
   "icon32.png",
@@ -48,14 +53,15 @@ const PERSONAL_DATA = [
 
 const isText = (file) => /\.(json|js|html|css)$/.test(file);
 
-// Every file the extension loads: what the manifest names, what each page loads,
-// and every relative import those scripts make.
+// Every file the extension loads: what the manifest names, what each page loads
+// or links to, every relative import those scripts make, and every page they
+// open with chrome.runtime.getURL.
 export function referencedFiles() {
   const manifest = JSON.parse(readFileSync(join(ROOT, "manifest.json"), "utf8"));
   const found = new Set(["manifest.json"]);
   const queue = [];
   const add = (path, from = ".") => {
-    if (!path || /^(https?:|data:|chrome:|#)/.test(path)) return;
+    if (!path || /^(https?:|data:|chrome:|mailto:|#)/.test(path)) return;
     const file = posix.normalize(posix.join(posix.dirname(from), path.replace(/^\//, "")));
     if (!found.has(file)) {
       found.add(file);
@@ -75,10 +81,11 @@ export function referencedFiles() {
     if (!isText(file) || !existsSync(full)) continue;
     const text = readFileSync(full, "utf8");
     if (file.endsWith(".html")) {
-      for (const m of text.matchAll(/<(?:script|img)\b[^>]*\bsrc=["']([^"']+)["']|<link\b[^>]*\bhref=["']([^"']+)["']/g)) add(m[1] || m[2], file);
+      for (const m of text.matchAll(/<(?:script|img)\b[^>]*\bsrc=["']([^"']+)["']|<(?:link|a)\b[^>]*\bhref=["']([^"']+)["']/g)) add(m[1] || m[2], file);
     }
     if (file.endsWith(".js")) {
       for (const m of text.matchAll(/(?:\bfrom|\bimport)\s*\(?\s*["'](\.{1,2}\/[^"']+)["']/g)) add(m[1], file);
+      for (const m of text.matchAll(/\bgetURL\(\s*["']([^"']+)["']\s*\)/g)) add(m[1]);
       for (const m of text.matchAll(/\bfiles\s*:\s*\[([^\]]*)\]/g)) {
         for (const f of m[1].matchAll(/["']([^"']+)["']/g)) add(f[1]);
       }

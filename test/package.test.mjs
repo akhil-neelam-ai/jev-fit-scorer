@@ -21,6 +21,12 @@ check("everything the extension loads is on the allowlist", [...referenced].ever
 const missingFile = checkAllowlist(ALLOWLIST.filter((f) => f !== "scoring.js"));
 check("leaving a loaded file off the list is caught", missingFile.problems.some((p) => p.includes("loads scoring.js")));
 
+// The worker opens the setup guide with chrome.runtime.getURL, so the walk
+// has to follow getURL to find it.
+check("the setup guide counts as loaded", referenced.has("welcome.html") && referenced.has("welcome.js"));
+const missingGuide = checkAllowlist(ALLOWLIST.filter((f) => f !== "welcome.html"));
+check("leaving the setup guide off the list is caught", missingGuide.problems.some((p) => p.includes("loads welcome.html")));
+
 for (const bad of ["eval/private/resume.txt", "eval/private/backups/x.bundle", ".env", "site/index.html", "README.md", "cli.js"]) {
   const result = checkAllowlist([...ALLOWLIST, bad]);
   // Pin the reason, not just the path: a file that doesn't exist on disk also starts its message with the path.

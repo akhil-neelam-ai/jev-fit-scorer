@@ -59,8 +59,8 @@ Works in Chrome and other Chromium browsers, including Comet, Edge, and Brave.
 
 1. On this repo's GitHub page, click **Code**, then **Download ZIP**, and unzip it. You can also clone the repo.
 2. Open `chrome://extensions`, turn on **Developer mode**, click **Load unpacked**, and pick the folder that holds `manifest.json`.
-3. Click the extension icon, then **Settings**. Paste your API key and click **Test & save API key**.
-4. Paste your resume as plain text and click **Save**. Uncheck the visa box if you don't need sponsorship.
+3. A setup guide opens in a new tab. It walks you through pinning the icon, adding your TypeSafe API key, and pasting your resume as plain text.
+4. Turn off the visa sponsorship switch if you don't need sponsorship. You can change your key and resume later in **Settings**.
 5. Open a job posting and click the extension icon.
 
 ## Get an API key

@@ -57,7 +57,11 @@ async function save() {
   });
   if (!response?.ok) throw new Error(response?.error || NO_REPLY);
   showSaveResult("Saved ✓", 2000);
+  announceSaved();
 }
+
+// The setup guide runs this form too, and checks off a step on this event.
+const announceSaved = () => document.dispatchEvent(new Event("settings-saved"));
 
 async function testKey() {
   if (!requireExtensionContext()) return;
@@ -88,6 +92,7 @@ async function testKey() {
     });
     if (!saved?.ok) throw new Error(saved?.error || NO_REPLY);
     $("testResult").textContent = `✓ Key works and was saved (${resp.usage?.input_tokens ?? "?"} input tokens used)`;
+    announceSaved();
   } catch (error) {
     $("testResult").textContent = `✕ ${error.message || "Could not test the key."}`;
   } finally {

@@ -36,6 +36,8 @@ textarea { resize: vertical; }
 .btn.secondary:hover { background: #f3f4f6; border-color: #d1d5db; }
 .actions { margin-top: 16px; }
 hr { border: none; border-top: 1px solid var(--line); margin: 22px 0; }
+.page a { color: var(--accent-dark); font-weight: 600; }
+
 
 /* popup */
 body.popup { width: 300px; padding: 14px; }

@@ -11,8 +11,10 @@ Thanks for helping. This page covers how the code is laid out, how to change the
 | `popup.html`, `popup.js` | The popup that reads the open job page and shows the score |
 | `extract.js` | Reads the job's title, company, and description from the open page |
 | `options.html`, `options.js` | The settings page for the API key, resume, and visa option |
+| `welcome.html`, `welcome.js`, `welcome.css` | The setup guide that opens after install, one screen at a time. Its form runs on `options.js`, so it keeps the settings page's field ids |
+| `fonts/` | Bricolage Grotesque, the landing page's display font, bundled for the setup guide. Its license is in `bricolage-grotesque.css` |
 | `cli.js` | The same scoring from the command line |
-| `test/` | Tests for the score math, the worker, the CLI, the page reader, and the popup |
+| `test/` | Tests for the score math, the worker, the CLI, the page reader, the popup, and the setup guide |
 | `eval/` | The scripts behind the numbers in the README |
 | `site/` | The landing page at worth-applying.vercel.app |
 | `scripts/popup-shots.mjs` | Renders the real popup into the landing page's screenshots. Rerun it after changing the popup: `CHROME_BIN=... node scripts/popup-shots.mjs` |
@@ -28,7 +30,7 @@ Bump `SCORING_CACHE_VERSION` when you change a question. Cached scores are keyed
 
 Run `npm test` before you send a change. It checks the score math, the extension's worker, and the CLI against a fake API. It also pins the extension's permissions and checks the store package.
 
-`npm run test:browser` loads the extension in Chromium and checks the popup and options pages. It also runs the page reader on sample pages and walks the popup through every state. Set `CHROME_BIN` to a Chromium or Chrome for Testing binary first, since regular Chrome won't load test extensions. These tests need Node 22 or newer.
+`npm run test:browser` loads the extension in Chromium and checks that installing it opens the setup guide, and that the popup and options pages work. It also runs the page reader on sample pages, walks the popup through every state, and walks the setup guide through its four steps. Set `CHROME_BIN` to a Chromium or Chrome for Testing binary first, since regular Chrome won't load test extensions. These tests need Node 22 or newer.
 
 ## Package for the Chrome Web Store
 
