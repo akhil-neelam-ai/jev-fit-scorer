@@ -37,3 +37,62 @@ for (const chart of document.querySelectorAll("[data-dots]")) {
     chart.append(dot);
   }
 }
+
+// Tools for AI agents in the browser (WebMCP). Browsers without the API skip this.
+const modelContext = document.modelContext || navigator.modelContext;
+if (modelContext?.registerTool) {
+  const STORE = "https://chromewebstore.google.com/detail/worth-applying/ppcfjfgonfggaaeoomjakdjkjpjbokbc";
+  const samples = buttons.map((button) => ({
+    id: button.dataset.sample,
+    job: button.querySelector(".sample-role").textContent,
+    recommendation: button.querySelector(".sample-rec").textContent,
+    score: Number.parseInt(button.querySelector(".sample-score").textContent, 10)
+  }));
+  const reply = (data) => ({ content: [{ type: "text", text: JSON.stringify(data) }] });
+  const tools = [
+    {
+      name: "get_install_info",
+      description: "Returns how to install the Worth Applying? Chrome extension: the Chrome Web Store link, supported browsers, price, what you need, and the privacy policy.",
+      inputSchema: { type: "object", properties: {} },
+      annotations: { readOnlyHint: true },
+      execute: async () => reply({
+        chromeWebStore: STORE,
+        price: "Free. Scoring uses your own TypeSafe API key and costs about 2 cents per 100 jobs.",
+        browsers: ["Chrome", "Edge", "Brave", "Comet"],
+        youNeed: ["A TypeSafe API key from https://console.typesafe.ai", "Your resume as plain text"],
+        privacyPolicy: new URL("/privacy", location.href).href,
+        sourceCode: "https://github.com/akhil-neelam-ai/worth-applying"
+      })
+    },
+    {
+      name: "get_sample_scores",
+      description: "Returns the three sample results on this page: the same resume scored against three job postings, with each fit score out of 10 and its recommendation.",
+      inputSchema: { type: "object", properties: {} },
+      annotations: { readOnlyHint: true },
+      execute: async () => reply(samples)
+    },
+    {
+      name: "show_sample",
+      description: "Shows the extension's popup for one sample job in the page's product panel.",
+      inputSchema: {
+        type: "object",
+        properties: { sample: { type: "string", enum: samples.map((s) => s.id), description: "apm (7/10), growth (4/10), or engineer (2/10)" } },
+        required: ["sample"]
+      },
+      execute: async ({ sample }) => {
+        const button = buttons.find((b) => b.dataset.sample === sample);
+        if (!button) return reply({ error: `Unknown sample: ${sample}` });
+        select(button);
+        button.scrollIntoView({ block: "center", behavior: "smooth" });
+        return reply(samples.find((s) => s.id === sample));
+      }
+    }
+  ];
+  for (const tool of tools) {
+    try {
+      Promise.resolve(modelContext.registerTool(tool)).catch(() => {});
+    } catch {
+      // An older or different version of the API. The page works without it.
+    }
+  }
+}

@@ -1,0 +1,33 @@
+{
+  "specVersion": "1.0",
+  "host": {
+    "displayName": "Worth Applying?",
+    "identifier": "did:web:worth-applying.vercel.app"
+  },
+  "entries": [
+    {
+      "identifier": "urn:air:worth-applying.vercel.app:docs:llms",
+      "displayName": "Worth Applying? site summary for language models",
+      "description": "What the Worth Applying? Chrome extension does, what it costs, how accurate it is, and how to install it.",
+      "type": "text/markdown",
+      "url": "https://worth-applying.vercel.app/llms.txt",
+      "representativeQueries": [
+        "Chrome extension that scores job fit",
+        "tool to check if a job matches my resume",
+        "how accurate is Worth Applying"
+      ]
+    },
+    {
+      "identifier": "urn:air:worth-applying.vercel.app:docs:home",
+      "displayName": "Worth Applying? home page in markdown",
+      "description": "The landing page as markdown: sample scores, how the score works, accuracy, install steps, and privacy.",
+      "type": "text/markdown",
+      "url": "https://worth-applying.vercel.app/index.md",
+      "representativeQueries": [
+        "Worth Applying Chrome extension",
+        "how does Worth Applying score jobs",
+        "install Worth Applying"
+      ]
+    }
+  ]
+}
