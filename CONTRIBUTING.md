@@ -38,6 +38,8 @@ Run `npm run package`. It writes `dist/worth-applying-<version>.zip` with only t
 
 Never zip this folder by hand for an upload. Your local copy may hold `eval/private/`, which has a personal resume and job search. When the extension starts loading a new file, add it to the list in `scripts/package.mjs`.
 
+For a store update, raise `version` in `manifest.json` and `package.json` first. The store only takes a version higher than the one it has.
+
 ## Score from the terminal
 
 The CLI uses the same `scoring.js` as the extension. You need Node 18 or newer. There is nothing to install.

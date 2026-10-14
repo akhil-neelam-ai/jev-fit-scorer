@@ -55,13 +55,14 @@ We measured these on jobs the scorer wasn't tuned on. All 101 jobs were scored a
 
 ## Install
 
-Works in Chrome and other Chromium browsers, including Comet, Edge, and Brave.
+Get it free on the [Chrome Web Store](https://chromewebstore.google.com/detail/worth-applying/ppcfjfgonfggaaeoomjakdjkjpjbokbc). It works in Chrome and other Chromium browsers, including Comet, Edge, and Brave.
 
-1. On this repo's GitHub page, click **Code**, then **Download ZIP**, and unzip it. You can also clone the repo.
-2. Open `chrome://extensions`, turn on **Developer mode**, click **Load unpacked**, and pick the folder that holds `manifest.json`.
-3. A setup guide opens in a new tab. It walks you through pinning the icon, adding your TypeSafe API key, and pasting your resume as plain text.
-4. Turn off the visa sponsorship switch if you don't need sponsorship. You can change your key and resume later in **Settings**.
-5. Open a job posting and click the extension icon.
+1. On the store page, click **Add to Chrome**.
+2. A setup guide opens in a new tab. It walks you through pinning the icon, adding your TypeSafe API key, and pasting your resume as plain text.
+3. Turn off the visa sponsorship switch if you don't need sponsorship. You can change your key and resume later in **Settings**.
+4. Open a job posting and click the extension icon.
+
+To run the code in this repo instead, click **Code**, then **Download ZIP**, and unzip it. Open `chrome://extensions`, turn on **Developer mode**, click **Load unpacked**, and pick the folder that holds `manifest.json`.
 
 ## Get an API key
 
@@ -114,7 +115,6 @@ This project isn't affiliated with Lenny's Jobs, TrueUp, or TypeSafe.
 
 ## What's next
 
-- The Chrome Web Store, so you can install it without Developer mode.
 - Support for other decision models, with your own API key.
 - A small open decision model, trained with Unsloth for this one job, that you can run yourself.
 
