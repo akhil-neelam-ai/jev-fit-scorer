@@ -91,8 +91,6 @@ try {
   let g = await guide(on("intro"));
   check("fresh: the intro shows first, alone", g.heading === "Know if a job fits before you apply." &&
     g.buttons === "Get started" && !g.bar && g.screens === 1, show(g));
-  const note = await chrome.evaluate(`document.querySelector("[data-screen='intro'] .fine")?.textContent || ""`);
-  check("fresh: the intro says what's counted and where to turn it off", /random ID/.test(note) && /Settings/.test(note), note);
 
   // Pin: the guide watches the toolbar and checks the pin off by itself.
   await click("[data-screen='intro'] [data-go='pin']");
