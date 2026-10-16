@@ -31,6 +31,11 @@
       <span>I need US visa sponsorship <span class="muted">(adds a sponsorship-friendliness estimate to each score)</span></span>
     </label>
 
+    <label class="check">
+      <input type="checkbox" id="shareUsage" checked>
+      <span>Share anonymous usage counts <span class="muted">(setup steps, icon clicks and scores, under a random ID. Never your resume, key or the jobs you view. Saves right away.)</span></span>
+    </label>
+
     <div class="row actions">
       <button id="save" class="btn">Save</button>
       <span id="saveResult" class="muted"></span>
@@ -42,7 +47,8 @@
       Jev charges $0.042 per million input tokens and no output tokens. Full job
       descriptions vary in length, so the popup shows the estimated cost of each score.
     </p>
-    <p class="muted small">When you click the extension icon, it sends your resume and the open page's title, company, text, and web address to api.typesafe.ai for scoring. Nothing else leaves your browser.</p>
+    <p class="muted small">When you click the extension icon, it sends your resume and the open page's title, company, text, and web address to api.typesafe.ai for scoring.</p>
+    <p class="muted small">If usage counts are on, it also sends event names such as "icon clicked", its version and a random install ID to worth-applying.vercel.app, which passes them to PostHog. Nothing else leaves your browser. See the <a href="https://worth-applying.vercel.app/privacy" target="_blank" rel="noreferrer">privacy policy</a>.</p>
   </div>
   <script src="options.js"></script>
 </body>

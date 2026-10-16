@@ -1,7 +1,9 @@
 // Loads the real background.js (and through it, scoring.js) with a fake chrome
 // API and a fake Jev endpoint, then drives it through its message interface.
 // Run: node test/worker.test.mjs
-const store = {};
+// Usage counts start off here, so these checks see only Jev calls.
+// test/counts.test.mjs covers the counts.
+const store = { shareUsage: false };
 const listeners = [];
 // A read sees the store as it was when the read started and answers 20 ms
 // later, so the worker's first read is still in flight when the first
@@ -167,8 +169,8 @@ const s = await send({ type: "get_status" });
 check("get_status says only whether setup is done and a job is scored",
   JSON.stringify(s) === JSON.stringify({ ok: true, hasKey: true, hasResume: true, hasScore: true }), JSON.stringify(s));
 const g = await send({ type: "get_settings" });
-check("get_settings sends the three Settings fields and no cache",
-  g.ok && JSON.stringify(g.settings) === JSON.stringify({ apiKey: "key-real", resume: "MBA, 4y analytics", needsSponsorship: true }),
+check("get_settings sends the four Settings fields and no cache",
+  g.ok && JSON.stringify(g.settings) === JSON.stringify({ apiKey: "key-real", resume: "MBA, 4y analytics", needsSponsorship: true, shareUsage: false }),
   JSON.stringify(Object.keys(g.settings || {})));
 
 nextResponse = { answers: { check: { noul: 0.99 } }, usage: { input_tokens: 12 } };
@@ -252,6 +254,10 @@ check("a new install opens the setup guide",
   JSON.stringify(tabsOpened) === JSON.stringify([{ url: "chrome-extension://test-id/welcome.html" }]), JSON.stringify(tabsOpened));
 for (const reason of ["update", "chrome_update", "shared_module_update"]) installListeners[0]?.({ reason, previousVersion: "1.2.0" });
 check("updates don't open the guide", tabsOpened.length === 1, JSON.stringify(tabsOpened));
+
+// With usage counts off, nothing but Jev calls left the worker.
+await new Promise((r) => setTimeout(r, 50));
+check("with usage counts off, every request went to Jev", calls.every((c) => c.url === JEV_ENDPOINT), `${calls.filter((c) => c.url !== JEV_ENDPOINT).length} other requests`);
 
 console.log(`\n${failures === 0 ? "ALL WORKER CHECKS PASSED" : failures + " FAILURE(S)"}`);
 process.exit(failures ? 1 : 0);

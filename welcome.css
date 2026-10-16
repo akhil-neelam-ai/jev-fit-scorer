@@ -49,6 +49,8 @@
 .sub { max-width: 46ch; margin: 16px 0 0; color: var(--ob-ink-2); font-size: 18px; line-height: 1.5; }
 .center .sub { margin-left: auto; margin-right: auto; }
 .dark .sub { color: #d6d3d1; }
+/* The usage-counts note under the intro's button. */
+.fine { max-width: 34em; margin: 18px auto 0; color: #a8a29e; font-size: 13px; line-height: 1.5; text-wrap: balance; }
 
 /* ---- the step bar: back, then one segment per step ---- */
 .bar {

@@ -5,7 +5,7 @@
 Key facts:
 
 - On 101 test postings, 93 scores matched the full fit reviews from Lenny's Jobs, or came within 1 point. These postings were scored against one MBA candidate's resume, mostly for product roles.
-- Your resume and API key stay in your browser. Only your resume and the posting you score go to TypeSafe. The extension has no analytics or tracking. The website counts visits with Vercel Web Analytics.
+- Your resume and API key stay in your browser. Only your resume and the posting you score go to TypeSafe. The extension sends anonymous usage counts under a random install ID, which users can turn off in Settings. The website counts visits with Vercel Web Analytics.
 - The extension isn't affiliated with Lenny's Jobs, TrueUp, or TypeSafe.
 
 ## Pages

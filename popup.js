@@ -210,3 +210,5 @@ $("rescore").addEventListener("click", () => runOnce(start));
 $("scoreAnyway").addEventListener("click", () => runOnce(() => scoreJob(pageToScore)));
 $("openEmbedded").addEventListener("click", () => chrome.tabs.create({ url: embeddedSrc }));
 document.addEventListener("DOMContentLoaded", () => runOnce(start));
+// Counts the click on the icon, unless usage counts are off in Settings.
+chrome.runtime.sendMessage({ type: "count", event: "popup_open" }).catch(() => {});

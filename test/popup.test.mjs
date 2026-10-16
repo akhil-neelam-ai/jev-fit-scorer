@@ -106,6 +106,9 @@ try {
   check("setup: no key or resume offers the setup guide",
     shown.name === "Set up Worth Applying?" && shown.status === "Add your TypeSafe API key and resume to start scoring." &&
     shown.buttons === "Start setup", show(shown));
+  check("opening the popup asks the worker to count the click, once",
+    shown.calls.filter((c) => c.type === "count").map((c) => c.event).join() === "popup_open",
+    JSON.stringify(shown.calls.filter((c) => c.type === "count")));
   await chrome.evaluate(`document.getElementById("setupGuide").click()`);
   shown = await card(`window.calls.some((c) => c.api === "tabs.create")`);
   check("setup: Start setup opens the guide in a tab",

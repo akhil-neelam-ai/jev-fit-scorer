@@ -45,6 +45,6 @@ On 101 postings the scorer wasn't tuned on, 93 scores came out the same as Lenny
 
 ## Privacy
 
-Your resume and API key live in your browser. The extension reads a page only when you click its icon. When you score a job, only your resume and that posting go to TypeSafe's API at api.typesafe.ai. The extension has no analytics, ads, or tracking, and the project runs no server. This website counts visits with Vercel Web Analytics, which uses no cookies.
+Your resume and API key live in your browser. The extension reads a page only when you click its icon. When you score a job, only your resume and that posting go to TypeSafe's API at api.typesafe.ai. The extension sends anonymous usage counts, such as setup steps and icon clicks, under a random install ID. They never include your resume, your key or the jobs you view, and you can turn them off in Settings. This website counts visits with Vercel Web Analytics, which uses no cookies.
 
 Not affiliated with Lenny's Jobs, TrueUp, or TypeSafe.

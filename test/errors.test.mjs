@@ -4,7 +4,9 @@
 // background.js with a fake chrome API and a fake Jev endpoint, the same way
 // worker.test.mjs does.
 // Run: node test/errors.test.mjs
-const store = {};
+// Usage counts start off here, so the storage faults below hit the writes
+// under test. test/counts.test.mjs covers the counts.
+const store = { shareUsage: false };
 const listeners = [];
 let failNextGet = false;
 let failNextSave = false;

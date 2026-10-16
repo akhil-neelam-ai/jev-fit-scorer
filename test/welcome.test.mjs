@@ -27,7 +27,8 @@ const stub = ({ state = {}, pinApi = true, keyWorks = true } = {}) => `(() => {
     get_status: () => ({ ok: true, hasKey: !!s.settings.apiKey, hasResume: !!s.settings.resume.trim(), hasScore: s.hasScore }),
     get_settings: () => ({ ok: true, settings: { ...s.settings } }),
     test_api_key: () => ${keyWorks} ? { ok: true, usage: { input_tokens: 97 } } : { ok: false, error: ${JSON.stringify(BAD_KEY)} },
-    save_settings: (message) => { Object.assign(s.settings, message.settings); return { ok: true }; }
+    save_settings: (message) => { Object.assign(s.settings, message.settings); return { ok: true }; },
+    count: () => ({ ok: true })
   };
   Object.defineProperty(window, "chrome", { configurable: true, value: {
     runtime: {
@@ -90,6 +91,8 @@ try {
   let g = await guide(on("intro"));
   check("fresh: the intro shows first, alone", g.heading === "Know if a job fits before you apply." &&
     g.buttons === "Get started" && !g.bar && g.screens === 1, show(g));
+  const note = await chrome.evaluate(`document.querySelector("[data-screen='intro'] .fine")?.textContent || ""`);
+  check("fresh: the intro says what's counted and where to turn it off", /random ID/.test(note) && /Settings/.test(note), note);
 
   // Pin: the guide watches the toolbar and checks the pin off by itself.
   await click("[data-screen='intro'] [data-go='pin']");
@@ -138,6 +141,9 @@ try {
   await chrome.evaluate(`(() => { window.__state.hasScore = true; window.dispatchEvent(new Event("focus")); })()`);
   g = await guide(on("done"));
   check("done: a first score finishes the guide", g.heading === "You're set." && g.buttons === "Close this tab, Open Settings" && !g.bar, show(g));
+  check("every screen asks the worker to count it, in order",
+    [...new Set(sent(g, "count").map((c) => c.event))].join() === "guide_intro,guide_pin,guide_key,guide_resume,guide_try,guide_done",
+    sent(g, "count").map((c) => c.event).join());
   await click("#closeTab");
   g = await guide(`window.calls.some((c) => c.api === "tabs.remove")`);
   check("done: Close this tab closes this tab", JSON.stringify(g.calls.filter((c) => c.api === "tabs.remove")) === JSON.stringify([{ api: "tabs.remove", id: 41 }]),

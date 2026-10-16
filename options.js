@@ -43,6 +43,21 @@ async function load() {
   $("apiKey").value = s.apiKey || "";
   $("resume").value = s.resume || "";
   $("needsSponsorship").checked = s.needsSponsorship !== false;
+  // Only Settings has this switch. The setup guide runs this form without it.
+  if ($("shareUsage")) $("shareUsage").checked = s.shareUsage !== false;
+}
+
+// The usage-counts switch saves as soon as it changes, without Save.
+async function saveShareUsage(event) {
+  if (!requireExtensionContext()) return;
+  const on = event.target.checked;
+  const response = await ask({ type: "save_settings", settings: { shareUsage: on } });
+  if (response?.ok) {
+    showSaveResult(on ? "Usage counts on ✓" : "Usage counts off ✓", 2000);
+  } else {
+    event.target.checked = !on;
+    showSaveResult(`✕ ${response?.error || NO_REPLY}`);
+  }
 }
 
 async function save() {
@@ -108,4 +123,5 @@ $("save").addEventListener("click", async () => {
   }
 });
 $("testKey").addEventListener("click", testKey);
+$("shareUsage")?.addEventListener("change", saveShareUsage);
 document.addEventListener("DOMContentLoaded", load);

@@ -20,11 +20,17 @@ const DEFAULT_SETTINGS = {
   apiKey: "",
   resume: "",
   needsSponsorship: true,
-  cache: {} // cache key -> the result scoring.js's parseJevResponse returns
+  shareUsage: true,
+  cache: {}, // cache key -> the result scoring.js's parseJevResponse returns
+  // Usage-count bookkeeping: the random install ID, the once-only counts
+  // already sent, and the last day active_day was sent.
+  installId: "",
+  countsSent: {},
+  activeDay: ""
 };
 
 // The settings the Settings page shows and saves.
-const USER_SETTINGS = ["apiKey", "resume", "needsSponsorship"];
+const USER_SETTINGS = ["apiKey", "resume", "needsSponsorship", "shareUsage"];
 
 // The cache keeps this many scores, the newest by the ts each one stores.
 // Exported for the tests.
@@ -164,12 +170,20 @@ async function scoreAndCacheJob(job, key) {
   if (!settings.apiKey) throw userError("Add your TypeSafe API key in Settings.");
   if (!(settings.resume || "").trim()) throw userError("Add your resume in Settings.");
 
-  const { result } = await runJevScore({
-    apiKey: settings.apiKey,
-    resume: settings.resume,
-    needsSponsorship: settings.needsSponsorship,
-    job
-  });
+  let result;
+  try {
+    ({ result } = await runJevScore({
+      apiKey: settings.apiKey,
+      resume: settings.resume,
+      needsSponsorship: settings.needsSponsorship,
+      job
+    }));
+  } catch (e) {
+    count("score_error");
+    throw e;
+  }
+  count("score");
+  count("first_score");
 
   settings.cache[key] = result;
   pruneCache(settings.cache);
@@ -183,11 +197,117 @@ async function scoreAndCacheJob(job, key) {
   return { ...result, cached: false };
 }
 
+// ---- usage counts ----
+//
+// Anonymous counts of a few actions, so we can see how many installs finish
+// setup and keep using the extension. Each count is an event name, the
+// extension's version and a random install ID made here. Never the resume,
+// the key, anything about a job, page addresses or scores. The privacy policy
+// lists the events, and Settings turns counts off.
+
+export const COUNT_URL = "https://worth-applying.vercel.app/api/count";
+
+// Sent the first time each happens on an install.
+const ONCE = new Set(["install", "guide_intro", "guide_pin", "guide_key", "guide_resume", "guide_try", "guide_done", "setup_done", "first_score"]);
+// Sent at most once a day.
+const DAILY = new Set(["active_day"]);
+// Sent every time.
+const EVERY = new Set(["popup_open", "score", "score_error"]);
+// What the popup and the setup guide may ask to count.
+const PAGE_EVENTS = new Set(["popup_open", "guide_intro", "guide_pin", "guide_key", "guide_resume", "guide_try", "guide_done"]);
+
+// The bookkeeping runs one count at a time, so two counts can't both send a
+// once-only event or make two install IDs. Sending doesn't wait in line.
+let counting = Promise.resolve();
+function inTurn(task) {
+  const run = counting.then(task);
+  counting = run.catch(() => null);
+  return run;
+}
+
+// Counts `event` unless counts are off or it was already counted. It never
+// throws. A count that doesn't get through is dropped, but a once-only or
+// daily one can go again next time.
+function count(event) {
+  return inTurn(() => claim(event))
+    .then((claimed) => claimed && deliver(claimed))
+    .catch(() => {});
+}
+
+// Marks `event` as counted and returns what to send, or null to send nothing.
+async function claim(event) {
+  await whenSettingsReady();
+  if (!settings.shareUsage) return null;
+  if (ONCE.has(event)) {
+    if (settings.countsSent[event]) return null;
+    settings.countsSent = { ...settings.countsSent, [event]: true };
+    await saveSettings({ countsSent: settings.countsSent });
+  } else if (DAILY.has(event)) {
+    const today = new Date().toISOString().slice(0, 10);
+    if (settings.activeDay === today) return null;
+    settings.activeDay = today;
+    await saveSettings({ activeDay: today });
+  } else if (!EVERY.has(event)) {
+    return null;
+  }
+  // Counts may have been turned off while that saved.
+  if (!settings.shareUsage) return null;
+  if (!settings.installId) {
+    settings.installId = crypto.randomUUID();
+    await saveSettings({ installId: settings.installId });
+  }
+  return { event, installId: settings.installId };
+}
+
+async function deliver({ event, installId }) {
+  if (!settings.shareUsage) return;
+  let delivered = false;
+  try {
+    const response = await fetch(COUNT_URL, {
+      method: "POST",
+      // Plain text keeps this a simple request, so there's no CORS preflight.
+      headers: { "Content-Type": "text/plain" },
+      body: JSON.stringify({ e: event, v: chrome.runtime.getManifest().version, id: installId }),
+      signal: AbortSignal.timeout(10_000)
+    });
+    delivered = response.ok;
+  } catch {}
+  if (delivered) return;
+  // A once-only or daily count that didn't get through can go again next time.
+  await inTurn(async () => {
+    if (ONCE.has(event)) {
+      const { [event]: _, ...rest } = settings.countsSent;
+      settings.countsSent = rest;
+      await saveSettings({ countsSent: rest });
+    } else if (DAILY.has(event)) {
+      settings.activeDay = "";
+      await saveSettings({ activeDay: "" });
+    }
+  });
+}
+
+// An install from before counts existed has been through setup already, or
+// chose not to. Marking what it did keeps setup_done and first_score meaning
+// the first time, and keeps old installs out of the setup funnel.
+function markEarlierSetup() {
+  return inTurn(async () => {
+    await whenSettingsReady();
+    if (settings.countsSent.install) return;
+    const done = ["install", "guide_intro", "guide_pin", "guide_key", "guide_resume", "guide_try", "guide_done"];
+    if (settings.apiKey && settings.resume.trim()) done.push("setup_done");
+    if (Object.keys(settings.cache).length > 0) done.push("first_score");
+    settings.countsSent = { ...Object.fromEntries(done.map((event) => [event, true])), ...settings.countsSent };
+    await saveSettings({ countsSent: settings.countsSent });
+  }).catch((e) => console.warn("[worth-applying] couldn't mark earlier setup", e));
+}
+
 // ---- install ----
 
 // A new install opens the setup guide. Updates and reloads don't.
 chrome.runtime.onInstalled.addListener(({ reason }) => {
+  if (reason === "update") markEarlierSetup();
   if (reason !== "install") return;
+  count("install");
   chrome.tabs.create({ url: chrome.runtime.getURL("welcome.html") })
     .catch((e) => console.warn("[worth-applying] couldn't open the setup guide", e));
 });
@@ -230,8 +350,19 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
       // once storage has them. So a failed save changes nothing, and two saves
       // at once can't undo each other.
       const changes = pick(msg.settings, USER_SETTINGS);
+      // Turning counts off forgets the install ID. Turning them back on
+      // starts a new one.
+      if (changes.shareUsage === false) changes.installId = "";
       await saveSettings(changes);
       settings = { ...settings, ...changes };
+      sendResponse({ ok: true });
+      if (settings.apiKey && settings.resume.trim()) count("setup_done");
+    } else if (msg.type === "count") {
+      // The popup and the setup guide count their own events through here.
+      if (PAGE_EVENTS.has(msg.event)) {
+        count(msg.event);
+        if (msg.event === "popup_open") count("active_day");
+      }
       sendResponse({ ok: true });
     }
   })().catch((e) => {

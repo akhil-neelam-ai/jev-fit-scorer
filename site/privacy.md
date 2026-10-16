@@ -2,7 +2,7 @@
 
 Last updated October 16, 2026
 
-This covers the Worth Applying? Chrome extension. The short version: your data stays in your browser, except what goes to TypeSafe to score a job. We don't run a server, and the extension sends us nothing.
+This covers the Worth Applying? Chrome extension. The short version: your resume, your key and the jobs you view stay in your browser, except what goes to TypeSafe to score a job. The extension also sends us anonymous usage counts, which you can turn off.
 
 ## What the extension stores
 
@@ -23,12 +23,28 @@ It reads a page only when you click the extension icon. If the page looks like a
 
 When you test your API key in Settings, it sends one short test request with that key. TypeSafe's own privacy policy covers what it does with what it receives.
 
+## Usage counts
+
+Starting with version 1.5.0, the extension sends us a count when you:
+
+- Install it
+- Reach each screen of the setup guide, once per install
+- Finish setup, and score your first job, once each
+- Click its icon, each time, plus one "active" count per day
+- Score a job, or a score fails
+
+Each count holds the event's name, the extension's version and a random install ID. The ID is made on your device. It isn't tied to your name, email, resume or browsing, and it's deleted when you remove the extension or turn counts off.
+
+Counts go to worth-applying.vercel.app, which passes them to PostHog, the analytics service we use. Your IP address isn't passed on, and PostHog keeps no location or person profile. Counts never include your resume, your key, anything about the jobs you view, page addresses or scores.
+
+To turn counts off, open Settings and clear "Share anonymous usage counts". It takes effect at once.
+
 ## What it never does
 
-- It doesn't send anything to us. We don't run a server.
-- It has no analytics, tracking, or ads.
+- It never sends us your resume, your key, or anything about the jobs you view.
+- It has no ads, and it doesn't track you across sites.
 - It doesn't read pages unless you click its icon.
-- It doesn't sell your data or send it anywhere except TypeSafe.
+- It doesn't sell your data. Your resume and job pages go only to TypeSafe.
 
 ## Why it asks for these permissions
 
@@ -40,7 +56,7 @@ When you test your API key in Settings, it sends one short test request with tha
 
 ## Deleting your data
 
-Remove the extension from chrome://extensions. That deletes everything it stored. To change your resume or key, edit them in Settings and click Save.
+Remove the extension from chrome://extensions. That deletes everything it stored, including the install ID. Counts already sent stay in PostHog, but nothing links them to you. To change your resume or key, edit them in Settings and click Save.
 
 ## This website
 

@@ -99,7 +99,9 @@ served at [ENDPOINT URL]. Its API docs are at [DOCS URL].
 
 ## Privacy
 
-Your resume and API key stay in your browser's local extension storage. When you click the extension icon, it sends your resume and the open page's title, company, text, and web address to api.typesafe.ai for scoring. Nothing else leaves your browser.
+Your resume and API key stay in your browser's local extension storage. When you click the extension icon, it sends your resume and the open page's title, company, text, and web address to api.typesafe.ai for scoring.
+
+It also sends anonymous usage counts, such as setup steps, icon clicks and scores, under a random install ID. They go through worth-applying.vercel.app to PostHog, and they never include your resume, your key or job details. Turn them off in Settings. The [privacy policy](https://worth-applying.vercel.app/privacy) lists every count.
 
 The extension only reads a page after you click its icon. It doesn't ask for access to every site you visit.
 

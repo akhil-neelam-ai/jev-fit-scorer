@@ -30,7 +30,7 @@
     <div class="section-head">
       <p class="label">Last updated October 16, 2026</p>
       <h1>Privacy policy</h1>
-      <p>This covers the Worth Applying? Chrome extension. The short version: your data stays in your browser, except what goes to TypeSafe to score a job. We don't run a server, and the extension sends us nothing.</p>
+      <p>This covers the Worth Applying? Chrome extension. The short version: your resume, your key and the jobs you view stay in your browser, except what goes to TypeSafe to score a job. The extension also sends us anonymous usage counts, which you can turn off.</p>
     </div>
 
     <h2>What the extension stores</h2>
@@ -51,12 +51,25 @@
     </ul>
     <p>When you test your API key in Settings, it sends one short test request with that key. TypeSafe's own privacy policy covers what it does with what it receives.</p>
 
+    <h2>Usage counts</h2>
+    <p>Starting with version 1.5.0, the extension sends us a count when you:</p>
+    <ul>
+      <li>Install it</li>
+      <li>Reach each screen of the setup guide, once per install</li>
+      <li>Finish setup, and score your first job, once each</li>
+      <li>Click its icon, each time, plus one "active" count per day</li>
+      <li>Score a job, or a score fails</li>
+    </ul>
+    <p>Each count holds the event's name, the extension's version and a random install ID. The ID is made on your device. It isn't tied to your name, email, resume or browsing, and it's deleted when you remove the extension or turn counts off.</p>
+    <p>Counts go to worth-applying.vercel.app, which passes them to <a href="https://posthog.com/privacy">PostHog</a>, the analytics service we use. Your IP address isn't passed on, and PostHog keeps no location or person profile. Counts never include your resume, your key, anything about the jobs you view, page addresses or scores.</p>
+    <p>To turn counts off, open Settings and clear "Share anonymous usage counts". It takes effect at once.</p>
+
     <h2>What it never does</h2>
     <ul>
-      <li>It doesn't send anything to us. We don't run a server.</li>
-      <li>It has no analytics, tracking, or ads.</li>
+      <li>It never sends us your resume, your key, or anything about the jobs you view.</li>
+      <li>It has no ads, and it doesn't track you across sites.</li>
       <li>It doesn't read pages unless you click its icon.</li>
-      <li>It doesn't sell your data or send it anywhere except TypeSafe.</li>
+      <li>It doesn't sell your data. Your resume and job pages go only to TypeSafe.</li>
     </ul>
 
     <h2>Why it asks for these permissions</h2>
@@ -70,7 +83,7 @@
     </table>
 
     <h2>Deleting your data</h2>
-    <p>Remove the extension from <code>chrome://extensions</code>. That deletes everything it stored. To change your resume or key, edit them in Settings and click Save.</p>
+    <p>Remove the extension from <code>chrome://extensions</code>. That deletes everything it stored, including the install ID. Counts already sent stay in PostHog, but nothing links them to you. To change your resume or key, edit them in Settings and click Save.</p>
 
     <h2>This website</h2>
     <p>This website counts visits with <a href="https://vercel.com/docs/analytics/privacy-policy">Vercel Web Analytics</a>. The extension doesn't. It records the page you open, the site that sent you, and your country, browser and device type. It uses no cookies. Vercel says the counts aren't tied to you or your IP address.</p>

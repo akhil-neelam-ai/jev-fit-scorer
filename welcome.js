@@ -46,6 +46,8 @@ function firstScreen() {
 
 function show(next) {
   screen = next;
+  // The worker counts each screen once per install, unless counts are off.
+  chrome.runtime.sendMessage({ type: "count", event: `guide_${next}` }).catch(() => {});
   for (const section of document.querySelectorAll(".screen")) {
     const on = section.dataset.screen === next;
     section.hidden = !on;
