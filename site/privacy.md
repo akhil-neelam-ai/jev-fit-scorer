@@ -1,8 +1,8 @@
 # Privacy policy: Worth Applying?
 
-Last updated October 11, 2026
+Last updated October 16, 2026
 
-This covers the Worth Applying? Chrome extension. The short version: your data stays in your browser, except what goes to TypeSafe to score a job. We don't run a server and we don't collect anything.
+This covers the Worth Applying? Chrome extension. The short version: your data stays in your browser, except what goes to TypeSafe to score a job. We don't run a server, and the extension sends us nothing.
 
 ## What the extension stores
 
@@ -41,6 +41,10 @@ When you test your API key in Settings, it sends one short test request with tha
 ## Deleting your data
 
 Remove the extension from chrome://extensions. That deletes everything it stored. To change your resume or key, edit them in Settings and click Save.
+
+## This website
+
+This website counts visits with [Vercel Web Analytics](https://vercel.com/docs/analytics/privacy-policy). The extension doesn't. It records the page you open, the site that sent you, and your country, browser and device type. It uses no cookies. Vercel says the counts aren't tied to you or your IP address.
 
 ## Questions
 
