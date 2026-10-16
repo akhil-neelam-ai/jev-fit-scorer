@@ -17,6 +17,8 @@ const port = 9333;
 const proc = spawn(bin, [
   `--user-data-dir=${profile}`, `--remote-debugging-port=${port}`,
   `--load-extension=${ext}`, `--disable-extensions-except=${ext}`,
+  // Keep the test's usage counts out of PostHog.
+  "--host-resolver-rules=MAP worth-applying.vercel.app ~NOTFOUND",
   "--headless=new", "--no-first-run", "--no-default-browser-check", "about:blank"
 ], { stdio: "ignore" });
 
