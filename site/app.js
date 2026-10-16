@@ -1,32 +1,15 @@
-// Worth Applying? landing page: switches the sample popup in the product panel.
-// The page reads fine without this file.
-const shots = [...document.querySelectorAll("[data-shot]")];
-const buttons = [...document.querySelectorAll("[data-sample]")];
-const live = document.querySelector("[data-live]");
+// Worth Applying? landing page: plays the demo video, draws the accuracy dots,
+// and offers tools to AI agents. The page reads fine without this file.
 
-// The other two screenshots load once the page settles, so they don't slow the first paint.
-function loadShots() {
-  for (const shot of shots) {
-    if (!shot.dataset.src) continue;
-    shot.src = shot.dataset.src;
-    delete shot.dataset.src;
-  }
+// The demo video plays, muted, while most of it is on screen, and pauses when
+// it scrolls away. With reduced motion it waits for the play button.
+const demo = document.querySelector("video[data-autoplay]");
+if (demo && "IntersectionObserver" in window && !matchMedia("(prefers-reduced-motion: reduce)").matches) {
+  new IntersectionObserver(([entry]) => {
+    if (entry.isIntersecting) demo.play().catch(() => {});
+    else demo.pause();
+  }, { threshold: 0.5 }).observe(demo);
 }
-addEventListener("load", () => ("requestIdleCallback" in window ? requestIdleCallback(loadShots) : setTimeout(loadShots, 200)));
-
-function select(button) {
-  loadShots();
-  for (const other of buttons) other.setAttribute("aria-pressed", String(other === button));
-  for (const shot of shots) {
-    const on = shot.dataset.shot === button.dataset.sample;
-    shot.classList.toggle("is-on", on);
-    if (on) shot.removeAttribute("aria-hidden");
-    else shot.setAttribute("aria-hidden", "true");
-  }
-  live.textContent = button.dataset.summary;
-}
-
-for (const button of buttons) button.addEventListener("click", () => select(button));
 
 // The dot chart on the accuracy card: data-dots="93/101" draws 101 dots with the first 93 filled.
 for (const chart of document.querySelectorAll("[data-dots]")) {
@@ -42,12 +25,12 @@ for (const chart of document.querySelectorAll("[data-dots]")) {
 const modelContext = document.modelContext || navigator.modelContext;
 if (modelContext?.registerTool) {
   const STORE = "https://chromewebstore.google.com/detail/worth-applying/ppcfjfgonfggaaeoomjakdjkjpjbokbc";
-  const samples = buttons.map((button) => ({
-    id: button.dataset.sample,
-    job: button.querySelector(".sample-role").textContent,
-    recommendation: button.querySelector(".sample-rec").textContent,
-    score: Number.parseInt(button.querySelector(".sample-score").textContent, 10)
-  }));
+  // Three results from the test run. index.md lists the same ones.
+  const samples = [
+    { job: "Associate Product Manager", score: 7, recommendation: "Apply and tailor", mainFactor: "Role level" },
+    { job: "Product Manager, Growth Strategy", score: 4, recommendation: "Apply if interested", mainFactor: "Required qualifications" },
+    { job: "Lead, Software Engineer", score: 2, recommendation: "Deprioritize", mainFactor: "Required qualifications" }
+  ];
   const reply = (data) => ({ content: [{ type: "text", text: JSON.stringify(data) }] });
   const tools = [
     {
@@ -66,26 +49,10 @@ if (modelContext?.registerTool) {
     },
     {
       name: "get_sample_scores",
-      description: "Returns the three sample results on this page: the same resume scored against three job postings, with each fit score out of 10 and its recommendation.",
+      description: "Returns three sample results from the test run: the same resume scored against three job postings, with each fit score out of 10, its recommendation, and the main factor.",
       inputSchema: { type: "object", properties: {} },
       annotations: { readOnlyHint: true },
       execute: async () => reply(samples)
-    },
-    {
-      name: "show_sample",
-      description: "Shows the extension's popup for one sample job in the page's product panel.",
-      inputSchema: {
-        type: "object",
-        properties: { sample: { type: "string", enum: samples.map((s) => s.id), description: "apm (7/10), growth (4/10), or engineer (2/10)" } },
-        required: ["sample"]
-      },
-      execute: async ({ sample }) => {
-        const button = buttons.find((b) => b.dataset.sample === sample);
-        if (!button) return reply({ error: `Unknown sample: ${sample}` });
-        select(button);
-        button.scrollIntoView({ block: "center", behavior: "smooth" });
-        return reply(samples.find((s) => s.id === sample));
-      }
     }
   ];
   for (const tool of tools) {

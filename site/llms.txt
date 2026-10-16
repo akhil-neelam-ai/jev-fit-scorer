@@ -12,6 +12,7 @@ Key facts:
 
 - [Home](https://worth-applying.vercel.app/index.md): what it does, sample scores, how the score works, and how to install it
 - [Privacy policy](https://worth-applying.vercel.app/privacy.md): what the extension stores and sends
+- [Demo video](https://worth-applying.vercel.app/demo.mp4): 26 seconds, no sound, from setup to a first score
 
 ## Install and source
 

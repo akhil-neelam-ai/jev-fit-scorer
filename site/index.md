@@ -8,6 +8,7 @@ Worth Applying? is a free, open-source Chrome extension. It scores any job posti
 - Decision model: Jev, from TypeSafe
 - Source code: [GitHub](https://github.com/akhil-neelam-ai/worth-applying), MIT license
 - Privacy policy: [worth-applying.vercel.app/privacy](https://worth-applying.vercel.app/privacy)
+- Demo video: [demo.mp4](https://worth-applying.vercel.app/demo.mp4), 26 seconds, no sound
 
 ## What you get for each job
 

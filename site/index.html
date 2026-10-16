@@ -44,6 +44,16 @@
         "inLanguage": "en"
       },
       {
+        "@type": "VideoObject",
+        "@id": "https://worth-applying.vercel.app/#demo",
+        "name": "Worth Applying? demo",
+        "description": "A 26-second demo with no sound: set up once, open a job posting, click the icon, and see a fit score.",
+        "thumbnailUrl": "https://worth-applying.vercel.app/demo-poster.webp",
+        "contentUrl": "https://worth-applying.vercel.app/demo.mp4",
+        "uploadDate": "2026-10-16",
+        "duration": "PT26S"
+      },
+      {
         "@type": "SoftwareApplication",
         "@id": "https://worth-applying.vercel.app/#app",
         "name": "Worth Applying?",
@@ -108,47 +118,20 @@
       </dl>
     </section>
 
-    <section class="shell samples" aria-labelledby="samples-title">
+    <!-- The demo plays muted while it's on screen (app.js). preload="none" keeps
+         the 1.3 MB file off the first load. -->
+    <section class="shell samples" id="demo" aria-labelledby="demo-title">
       <div class="samples-panel">
         <div class="samples-copy">
-          <h2 id="samples-title">The same resume can score a 7 or a 2.</h2>
-          <p>Click a job to see what the extension showed.</p>
-          <div class="sample-list" role="group" aria-label="Sample jobs">
-            <button type="button" class="sample" data-sample="apm" data-summary="Associate Product Manager: fit score 7 out of 10, apply and tailor." aria-pressed="true">
-              <span class="sample-role">Associate Product Manager</span>
-              <span class="sample-rec">Apply and tailor</span>
-              <span class="sample-score score-high">7<small>/10</small></span>
-            </button>
-            <button type="button" class="sample" data-sample="growth" data-summary="Product Manager, Growth Strategy: fit score 4 out of 10, apply if interested." aria-pressed="false">
-              <span class="sample-role">Product Manager, Growth Strategy</span>
-              <span class="sample-rec">Apply if interested</span>
-              <span class="sample-score score-mid">4<small>/10</small></span>
-            </button>
-            <button type="button" class="sample" data-sample="engineer" data-summary="Lead, Software Engineer: fit score 2 out of 10, deprioritize." aria-pressed="false">
-              <span class="sample-role">Lead, Software Engineer</span>
-              <span class="sample-rec">Deprioritize</span>
-              <span class="sample-score score-low">2<small>/10</small></span>
-            </button>
-          </div>
-          <p class="caption">Screenshots from our test run. We removed the company names.</p>
+          <p class="label">Watch it in 26 seconds</p>
+          <h2 id="demo-title">The same resume can score a 7 or a 2.</h2>
+          <p>Set it up once. Then open a job posting and click the icon. The fit score shows up in about a second.</p>
         </div>
-        <!-- Screenshots of the real popup. Regenerate with scripts/popup-shots.mjs after changing the popup. -->
         <div class="samples-visual">
-          <div class="popup-frame">
-            <img class="shot is-on" data-shot="apm" src="popup-apm.webp" width="328" height="404" fetchpriority="high" alt="The Worth Applying? popup on an Associate Product Manager posting: apply and tailor, fit 7/10. Required qualifications, core work, role level, and company stage are strong. Customer type and domain are moderate. Main factor: role level. Visa sponsorship: likely, 79%. 51% confidence, 0.1 seconds, $0.00014.">
-            <img class="shot" data-shot="growth" data-src="popup-growth.webp" width="328" height="404" aria-hidden="true" alt="The Worth Applying? popup on a Product Manager, Growth Strategy posting: apply if interested, fit 4/10. Required qualifications are weak. The other five parts are moderate. Main factor: required qualifications. Visa sponsorship: unlikely, 17%. 82% confidence, 0.1 seconds, $0.00015.">
-            <img class="shot" data-shot="engineer" data-src="popup-engineer.webp" width="328" height="404" aria-hidden="true" alt="The Worth Applying? popup on a Lead, Software Engineer posting: deprioritize, fit 2/10. Required qualifications, core work, role level, and domain are weak. Customer type and company stage are moderate. Main factor: required qualifications. Visa sponsorship: unlikely, 13%. 98% confidence, 0.1 seconds, $0.00018.">
-          </div>
+          <video src="demo.mp4" poster="demo-poster.webp" width="1080" height="1080" preload="none" muted loop playsinline controls data-autoplay
+            aria-label="A 26-second demo with no sound: set up once, open a job posting, click the icon, and see a fit score."></video>
         </div>
-        <p class="sr-only" aria-live="polite" data-live></p>
       </div>
-    </section>
-
-    <!-- Demo video: add demo.mp4 to this folder, add src="demo.mp4" to the video, then remove the hidden attribute.
-         Leave src off until the file exists. Browsers fetch it even while the section is hidden. -->
-    <section class="shell demo" id="demo" aria-labelledby="demo-title" hidden>
-      <h2 id="demo-title" class="sr-only">See it score a real posting</h2>
-      <video controls preload="metadata" playsinline></video>
     </section>
 
     <section class="shell proof" id="accuracy" aria-labelledby="accuracy-title">
