@@ -20,7 +20,8 @@ export const JEV_TIMEOUT_MS = 20000;
 // Bump when anything below changes the meaning of a cached score. The version
 // is part of the cache key, so old entries fall out instead of going stale.
 // Version 6 kept the version 5 rubric and cut the job down to four fields.
-export const SCORING_CACHE_VERSION = 6;
+// Version 7 asks about visas for the job's own country, not only the US.
+export const SCORING_CACHE_VERSION = 7;
 
 // Longer job descriptions are cut to this many characters before scoring.
 export const MAX_DESCRIPTION_CHARS = 60000;
@@ -172,9 +173,9 @@ export function buildQuestions({ needsSponsorship }) {
     questions.visa = {
       type: "noul",
       instructions:
-        "It is plausible the employer sponsors US work visas (or the role is open to candidates " +
-        "who need sponsorship). Estimate the probability this job is sponsorship-friendly based on " +
-        "explicit language in the job description and employer context."
+        "It is plausible the employer sponsors work visas for the country where this job is based " +
+        "(or the role is open to candidates who need visa sponsorship). Estimate the probability this " +
+        "job is sponsorship-friendly based on explicit language in the job description and employer context."
     };
   }
   return questions;

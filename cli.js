@@ -28,7 +28,7 @@ Options:
   --job <file|->      Job description text, or - to read stdin (required)
   --title <text>      Job title (default: first line of the description)
   --company <text>    Company name
-  --no-sponsorship    Skip the US visa sponsorship question
+  --no-sponsorship    Skip the visa sponsorship question
   --json              Print machine-readable JSON
   -h, --help          Show this help`;
 

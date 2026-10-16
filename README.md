@@ -17,7 +17,7 @@ One request asks the model nine questions about the same resume and job. It answ
 | `fit` | Score from 0 to 4 | How well the resume matches the job, with a confidence |
 | Six scorecard questions | Weak, moderate, or strong | One rating per dimension |
 | `why` | Choice | The scorecard dimension that is the strongest match or gap |
-| `visa` | Probability | How likely the job sponsors US visas (only if you ask) |
+| `visa` | Probability | How likely the job sponsors work visas in its country (only if you ask) |
 
 The popup turns those answers into:
 
@@ -25,7 +25,7 @@ The popup turns those answers into:
 - A recommendation that follows the score
 - A six-part scorecard rating required qualifications, core work, role level, customer type, company stage, and domain
 - The single strongest factor in the fit, good or bad
-- How likely the employer sponsors US visas. This is on by default. Turn it off in Settings if you don't need sponsorship. The fit score is the same either way.
+- How likely the employer sponsors work visas in the job's country. This is on by default. Turn it off in Settings if you don't need sponsorship. The fit score is the same either way.
 - The model's confidence, plus the time and cost of the call, or "Cached" if you already scored this job
 
 | Score | Recommendation |

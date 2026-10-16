@@ -17,7 +17,7 @@ Open a job posting and click the extension icon. The popup shows:
 - A recommendation: Strongly apply (8 to 10), Apply and tailor (6 to 7), Apply if interested (4 to 5), or Deprioritize (1 to 3)
 - A six-part scorecard: required qualifications, core work, role level, customer type, company stage, and domain. Each part is rated weak, moderate, or strong.
 - The main factor behind the score, good or bad
-- How likely the employer is to sponsor a US visa, if you need one. This estimate never lowers your fit score.
+- How likely the employer is to sponsor a work visa in the job's country, if you need one. This estimate never lowers your fit score.
 - The model's confidence, plus the time and cost of the call
 
 ## The same resume can score a 7 or a 2
