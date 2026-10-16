@@ -118,8 +118,9 @@
       </dl>
     </section>
 
-    <!-- The demo plays muted while it's on screen (app.js). preload="none" keeps
-         the 1.3 MB file off the first load. -->
+    <!-- The demo loops like a GIF: no controls, muted, playing while it's on
+         screen (app.js). A tap pauses it. preload="none" keeps the 1.3 MB file off
+         the first load. -->
     <section class="shell samples" id="demo" aria-labelledby="demo-title">
       <div class="samples-panel">
         <div class="samples-copy">
@@ -128,8 +129,9 @@
           <p>Set it up once. Then open a job posting and click the icon. The fit score shows up in about a second.</p>
         </div>
         <div class="samples-visual">
-          <video src="demo.mp4" poster="demo-poster.webp" width="1080" height="1080" preload="none" muted loop playsinline controls data-autoplay
-            aria-label="A 26-second demo with no sound: set up once, open a job posting, click the icon, and see a fit score."></video>
+          <video src="demo.mp4" poster="demo-poster.webp" width="1080" height="1080" preload="none" muted loop playsinline data-autoplay
+            disablepictureinpicture disableremoteplayback tabindex="0"
+            aria-label="A 26-second demo with no sound: set up once, open a job posting, click the icon, and see a fit score. Press to pause or play."></video>
         </div>
       </div>
     </section>

@@ -1,14 +1,29 @@
 // Worth Applying? landing page: plays the demo video, draws the accuracy dots,
 // and offers tools to AI agents. The page reads fine without this file.
 
-// The demo video plays, muted, while most of it is on screen, and pauses when
-// it scrolls away. With reduced motion it waits for the play button.
+// The demo video loops like a GIF. It plays, muted, while most of it is on
+// screen, and pauses when it scrolls away. It has no controls, so a tap, a
+// click, Enter or Space pauses or resumes it. With reduced motion it starts paused.
 const demo = document.querySelector("video[data-autoplay]");
-if (demo && "IntersectionObserver" in window && !matchMedia("(prefers-reduced-motion: reduce)").matches) {
-  new IntersectionObserver(([entry]) => {
-    if (entry.isIntersecting) demo.play().catch(() => {});
+if (demo) {
+  let pausedByViewer = false;
+  const toggle = () => {
+    pausedByViewer = !demo.paused;
+    if (demo.paused) demo.play().catch(() => {});
     else demo.pause();
-  }, { threshold: 0.5 }).observe(demo);
+  };
+  demo.addEventListener("click", toggle);
+  demo.addEventListener("keydown", (event) => {
+    if (event.key !== "Enter" && event.key !== " ") return;
+    event.preventDefault();
+    toggle();
+  });
+  if ("IntersectionObserver" in window && !matchMedia("(prefers-reduced-motion: reduce)").matches) {
+    new IntersectionObserver(([entry]) => {
+      if (!entry.isIntersecting) demo.pause();
+      else if (!pausedByViewer) demo.play().catch(() => {});
+    }, { threshold: 0.5 }).observe(demo);
+  }
 }
 
 // The dot chart on the accuracy card: data-dots="93/101" draws 101 dots with the first 93 filled.

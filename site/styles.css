@@ -104,7 +104,9 @@ p { margin: 0; }
 .samples-visual { position: relative; display: grid; place-items: center; }
 .samples-visual::before { content: ""; position: absolute; width: min(130%, 560px); aspect-ratio: 1; border-radius: 50%; background: radial-gradient(closest-side, rgba(255, 255, 255, 0.9), rgba(255, 255, 255, 0)); }
 
-.samples-visual video { position: relative; display: block; width: min(100%, 520px); height: auto; aspect-ratio: 1 / 1; border-radius: 24px; background: var(--ink); box-shadow: 0 30px 70px rgba(124, 45, 18, 0.2), 0 2px 6px rgba(0, 0, 0, 0.05); }
+.samples-visual video { cursor: pointer; position: relative; display: block; width: min(100%, 520px); height: auto; aspect-ratio: 1 / 1; border-radius: 24px; background: var(--ink); box-shadow: 0 30px 70px rgba(124, 45, 18, 0.2), 0 2px 6px rgba(0, 0, 0, 0.05); }
+/* No native controls or start button, even when iOS Low Power Mode blocks autoplay. */
+.samples-visual video::-webkit-media-controls, .samples-visual video::-webkit-media-controls-start-playback-button { display: none !important; -webkit-appearance: none; }
 
 /* Proof: the copy on the left, five stat cards on the right */
 .proof { display: grid; grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr); gap: 72px; align-items: center; padding-block: 112px; }
@@ -210,13 +212,21 @@ code { padding: 1px 6px; border: 1px solid var(--peach-line); border-radius: 6px
   .samples-panel { grid-template-columns: minmax(0, 1fr); justify-items: center; gap: 40px; }
   .samples-copy { width: 100%; max-width: none; }
   .proof { grid-template-columns: minmax(0, 1fr); gap: 40px; padding-block: 80px; }
-  /* Taller one-column cards would hide under the next card, so they stop stacking here. */
-  .stack-card { position: static; grid-template-columns: minmax(0, 1fr); gap: 36px; min-height: 0; }
-  .mock { justify-self: stretch; max-width: none; }
+  /* One-column cards still stack. Each is capped at the screen's height, so the
+     next card never covers its text: the copy sits on top, and the mock window
+     runs off the card's bottom edge and is cut there when space runs out. */
+  .stack-card {
+    top: calc(12px + var(--i) * 14px);
+    grid-template-columns: minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr); gap: 28px; align-items: start;
+    min-height: 0; max-height: calc(100vh - 28px - var(--i) * 14px); max-height: calc(100svh - 28px - var(--i) * 14px);
+    overflow: hidden; padding-bottom: 0;
+  }
+  .mock { justify-self: stretch; max-width: none; min-height: 0; border-bottom-left-radius: 0; border-bottom-right-radius: 0; }
   .install-card { grid-template-columns: minmax(0, 1fr); }
 }
+/* Short screens, such as a phone on its side, scroll the cards normally. */
 @media (max-height: 620px) {
-  .stack-card { position: static; }
+  .stack-card { position: static; max-height: none; }
 }
 @media (max-width: 720px) {
   .nav { gap: 16px; }
@@ -235,7 +245,7 @@ code { padding: 1px 6px; border: 1px solid var(--peach-line); border-radius: 6px
   .shell { padding-inline: 16px; }
   .samples-panel { padding: 28px 18px 32px; }
   .dots { gap: 5px; }
-  .stack-card { padding: 32px 20px; }
+  .stack-card { padding: 32px 20px 0; }
   .mock-body { padding: 20px; }
   .mock-click .mock-body { min-height: 270px; }
   .install-copy .actions .btn { flex: 1 1 100%; justify-content: center; }
