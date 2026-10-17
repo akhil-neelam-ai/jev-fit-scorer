@@ -17,3 +17,6 @@ eval/private/
 # Model project: local Python env and all data (jobs, resumes, labels, checkpoints).
 model/.venv/
 model/private/
+
+# Python bytecode
+__pycache__/
