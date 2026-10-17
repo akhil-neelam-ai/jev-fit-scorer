@@ -93,6 +93,24 @@ The app also serves decision models on a local endpoint that takes the same kind
 
 We'll train from a script in our own environment, with every version pinned, rather than inside the app's setup. The app updates itself. A pinned setup means a run next month repeats a run today.
 
+## 8. Checking the whole set
+
+All 156 resumes passed the check. Short ones averaged 204 words against a target of 200, medium ones 345 against 350, and long ones 533 against 550. The quality setting held at scale too. Strong resumes put a number in 85% of their bullets, average ones in 42% and weak ones in 4%.
+
+Eight Opus writers worked in parallel, about 19 resumes each, and each confirmed it ran as Claude Opus 5.5. Together they used about 1.5 million tokens in 21 minutes.
+
+Checking each file wasn't enough. The problems only showed up across the whole set. Three writers, working separately, each named their person Marisol Quintanilla. Two picked Devin Marchetti. Five resumes used the first name Kristine, and five used the surname Marchetti. Told to avoid stock names, eight copies of one model all reached for the same "unusual" ones. Copies of one model share its favorite choices, so they aren't independent samples.
+
+The fix taught the same lesson twice. Some of my replacement names collided with names already in the set, and one matched exactly. Names now pass a rule checked by script: every full name is unique, and no first or last name appears more than twice.
+
+Shared text was rare. Only 11 lines of six or more words appear in more than one resume, and most are school names with their city.
+
+The writers also followed rules nobody gave them for this task. They read this workspace's writing guide, which bans words like "leveraged" and "spearheaded". Not one of the 156 resumes uses either word, though real resumes use both all the time. Other clichés got through: 36 of the 42 weak resumes say things like "team player" or "hardworking". The student's base model already knows the banned words, and ResumeAtlas will bring real phrasing back.
+
+Contradictions in the personas got handled in the open. One MBA student's level allowed "only internships", so the writer kept the pre-MBA career and said so. People living in the US who need sponsorship got plausible stories, such as an L-1 visa tied to their current employer. Each writer listed every persona it had to bend.
+
+The writers also found a gap in the check. It accepted lengths up to 20% off target, while their brief said 15%. They kept their files within 15% anyway, and the check now enforces 15%.
+
 ## Decisions so far
 
 | Decision | Why |
@@ -105,6 +123,7 @@ We'll train from a script in our own environment, with every version pinned, rat
 | Resumes: 156 written by Claude Opus 5.5, plus a few hundred from ResumeAtlas | We control the mix and the rights are clean. ResumeAtlas adds real-world mess. |
 | Train on the Mac with Unsloth's MLX trainer | The Studio app ships it, and 64 GB is enough for a 2B student. |
 | First student: Qwen3.5 2B with a Clef head, trained on soft labels | It reads a whole resume and posting, and the license allows it. Laya can't fit them. |
+| Check generated data as a set, not only file by file | Eight writers reused the same names, which no single file revealed. |
 
 ## Words we've used
 
@@ -115,6 +134,7 @@ We'll train from a script in our own environment, with every version pinned, rat
 | Cross-validation | Fitting on part of the data, scoring on the rest, then rotating. |
 | Distillation | Training a small student to copy a large teacher's answers. |
 | Leakage | Test data reaching the training set, which inflates the score. |
+| Mode collapse | A model's habit of giving the same few answers when you asked for variety. |
 | LoRA | Training a small set of added weights instead of the whole model, so fine-tuning fits on one GPU. |
 | 4-bit quantization | Storing each weight in 4 bits instead of 16. A 27B model then fits in about 16 GB, with a small loss in quality. |
 | Seed | The starting number for a random generator. The same seed gives the same "random" list every run. |
@@ -123,8 +143,9 @@ We'll train from a script in our own environment, with every version pinned, rat
 
 ## Next
 
-1. Review the five pilot resumes, then have Opus write the other 151.
-2. Sample a few hundred ResumeAtlas resumes and strip their contact details.
-3. Pair and label about 3,000 resume and job pairs with the teacher, in Unsloth's training format. Test jobs stay out.
-4. Rate 50 to 100 pairs by hand for the gold set.
-5. Train the student on the Mac with Unsloth's MLX trainer, then grade it on the 101 jobs.
+The 156 resumes are done, and Trackly has supplied 150 job postings for each of the 13 functions.
+
+1. Sample a few hundred ResumeAtlas resumes and strip their contact details.
+2. Pair and label about 3,000 resume and job pairs with the teacher, in Unsloth's training format. Test jobs stay out.
+3. Rate 50 to 100 pairs by hand for the gold set.
+4. Train the student on the Mac with Unsloth's MLX trainer, then grade it on the 101 jobs.

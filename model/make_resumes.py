@@ -22,6 +22,7 @@ import argparse
 import json
 import random
 import re
+from collections import Counter
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -165,17 +166,28 @@ YEAR = re.compile(r"\b(19|20)\d\d\b")
 LINK_HOSTS = re.compile(r"(https?://|www\.|linkedin\.com|github\.com|behance\.net|dribbble\.com|medium\.com|substack\.com)", re.I)
 
 
+def name_line(text):
+    """The person's name: the first line that isn't a document title such as "Curriculum Vitae"."""
+    for line in text.splitlines():
+        line = line.strip()
+        if line and not re.match(r"(?i)(curriculum vitae|resume|r[ée]sum[ée])\b", line):
+            return re.split(r"\s{2,}|\||,", line)[0].strip().title()
+    return ""
+
+
 def check(people):
-    """Checks each written resume against its persona. Returns the number with problems."""
-    by_quality, bad = {}, 0
+    """Checks each written resume against its persona, then the names across the set.
+    Returns the number of problems."""
+    by_quality, bad, names = {}, 0, {}
     for p in people:
         path = OUT / "generated" / f"{p['id']}.txt"
         if not path.exists():
             continue
         text = path.read_text()
+        names[p["id"]] = name_line(text)
         words, target = len(text.split()), WORDS[p["length"]]
         issues = []
-        if not 0.8 * target <= words <= 1.25 * target:
+        if not 0.85 * target <= words <= 1.15 * target:
             issues.append(f"{words} words, aimed for about {target}")
         emails = re.findall(r"[\w.+-]+@([\w-]+(?:\.[\w-]+)+)", text)
         if not emails or any(d.lower() != "example.com" for d in emails):
@@ -202,6 +214,17 @@ def check(people):
         shares = by_quality.get(quality)
         if shares:
             print(f"{quality:<8} {len(shares):>3} resumes, {sum(shares) / len(shares):.0%} of bullets with numbers on average")
+    # Copies of one model reach for the same "unusual" names, which no single file shows.
+    # So every full name must be unique, and no first or last name may appear more than twice.
+    full = Counter(names.values())
+    firsts = Counter(n.split()[0] for n in names.values() if n)
+    lasts = Counter(n.replace(".", "").split()[-1] for n in names.values() if n)
+    repeats = [f"{n} x{k}" for n, k in full.items() if k > 1]
+    repeats += [f"first name {n} x{k}" for n, k in firsts.items() if k > 2]
+    repeats += [f"last name {n} x{k}" for n, k in lasts.items() if k > 2]
+    if repeats:
+        print("FIX  names repeat across resumes: " + "; ".join(repeats))
+        bad += 1
     return bad
 
 
