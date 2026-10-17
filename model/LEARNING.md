@@ -60,7 +60,7 @@ A license tag on Hugging Face is the uploader's claim. If they scraped resumes f
 
 No license means you can't use it. The default is all rights reserved. That ruled out the one public dataset with ready-made fit labels.
 
-Real resumes are personal data, whatever the tag says. ResumeAtlas is tagged MIT but doesn't say where its 13,389 resumes came from. We'll use a few hundred for their messy formatting and older careers, with contact details stripped.
+Real resumes are personal data, whatever the tag says. ResumeAtlas is tagged MIT but doesn't say where its 13,389 resumes came from. We planned to use a few hundred for their messy formatting and older careers, with contact details stripped. Lesson 9 reverses that.
 
 Fit for purpose matters most. Our test jobs are mostly 2026 product and tech roles. Older resumes from template sites reflect a different job market, so ResumeAtlas stays a small share.
 
@@ -111,6 +111,16 @@ Contradictions in the personas got handled in the open. One MBA student's level 
 
 The writers also found a gap in the check. It accepted lengths up to 20% off target, while their brief said 15%. They kept their files within 15% anyway, and the check now enforces 15%.
 
+## 9. Open a dataset before you use it
+
+ResumeAtlas looked fine from its card: 13,389 resumes in 43 categories, under an MIT license. The file itself told a different story. Every row is lowercase, with no punctuation and no line breaks. Small words like "the", "and" and "with" are gone. Across 6.4 million words there isn't a single one. In our generated resumes, those words make up 18% of the text.
+
+That's the standard cleanup for keyword classifiers, which count words and ignore their order. Our student is a language model that reads sentences, and the extension will hand it normal text. Training on keyword soup would teach it a kind of resume no user ever pastes.
+
+The rows also come from resume template sites. The placeholder name "jessica claire" appears in 7,613 rows, often with the same San Francisco street address. Another 781 rows say "robert smith", and 1,304 rows are exact copies of another row.
+
+So we dropped ResumeAtlas. The real-world mess it was meant to add can come from our own resumes instead. Some of them will get the damage that copying from a PDF causes, such as lost line breaks, merged columns and stray page numbers. That's called augmentation, and it lets us choose exactly which kinds of mess the student sees.
+
 ## Decisions so far
 
 | Decision | Why |
@@ -124,6 +134,7 @@ The writers also found a gap in the check. It accepted lengths up to 20% off tar
 | Train on the Mac with Unsloth's MLX trainer | The Studio app ships it, and 64 GB is enough for a 2B student. |
 | First student: Qwen3.5 2B with a Clef head, trained on soft labels | It reads a whole resume and posting, and the license allows it. Laya can't fit them. |
 | Check generated data as a set, not only file by file | Eight writers reused the same names, which no single file revealed. |
+| Drop ResumeAtlas. Add copy-paste damage to some generated resumes instead | Its rows have no punctuation, capitals or small words, so they aren't text a user would paste. |
 
 ## Words we've used
 
@@ -135,6 +146,8 @@ The writers also found a gap in the check. It accepted lengths up to 20% off tar
 | Distillation | Training a small student to copy a large teacher's answers. |
 | Leakage | Test data reaching the training set, which inflates the score. |
 | Mode collapse | A model's habit of giving the same few answers when you asked for variety. |
+| Augmentation | Changing copies of your training data on purpose, such as adding copy-paste damage, so the model learns to handle it. |
+| Stop words | Small, common words like "the" and "and". Keyword tools often delete them, which ruins text for a language model. |
 | LoRA | Training a small set of added weights instead of the whole model, so fine-tuning fits on one GPU. |
 | 4-bit quantization | Storing each weight in 4 bits instead of 16. A 27B model then fits in about 16 GB, with a small loss in quality. |
 | Seed | The starting number for a random generator. The same seed gives the same "random" list every run. |
@@ -145,7 +158,6 @@ The writers also found a gap in the check. It accepted lengths up to 20% off tar
 
 The 156 resumes are done, and Trackly has supplied 150 job postings for each of the 13 functions.
 
-1. Sample a few hundred ResumeAtlas resumes and strip their contact details.
-2. Pair and label about 3,000 resume and job pairs with the teacher, in Unsloth's training format. Test jobs stay out.
-3. Rate 50 to 100 pairs by hand for the gold set.
-4. Train the student on the Mac with Unsloth's MLX trainer, then grade it on the 101 jobs.
+1. Pair and label about 3,000 resume and job pairs with the teacher, in Unsloth's training format. Test jobs stay out. About 1 in 5 resumes gets copy-paste damage.
+2. Rate 50 to 100 pairs by hand for the gold set.
+3. Train the student on the Mac with Unsloth's MLX trainer, then grade it on the 101 jobs.
