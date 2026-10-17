@@ -8,7 +8,7 @@ Work toward a small decision model of our own. It answers the nine questions the
 
 1. **Teacher check.** Run a local open model on the 101 test jobs with Jev's exact questions. Grade it with the same cross-validated method used for Jev. If the teacher can't get near Jev, a student trained on its answers won't either. Done: the teacher tied Jev.
 2. **Training data.** Job postings from Trackly, and 156 generated resumes plus a few hundred from ResumeAtlas. Labels come from the teacher, checked against a small gold set rated by hand.
-3. **Fine-tune.** A 1 to 3 billion parameter model with LoRA through Unsloth, or mlx-tune on Apple Silicon.
+3. **Fine-tune.** Qwen3.5 2B with a Clef decision head, trained through LoRA on the teacher's probabilities. Unsloth's MLX trainer runs it on Apple Silicon (LEARNING.md, lesson 7).
 4. **Test.** The same 101 jobs, the same grading.
 5. **Decide how to ship,** only if the student gets close to Jev.
 

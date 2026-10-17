@@ -211,10 +211,14 @@ def main():
     ap.add_argument("--pilot", type=int, help="write only this many, spread across functions")
     ap.add_argument("--personas-only", action="store_true")
     ap.add_argument("--check", action="store_true", help="check the resumes already written, and change nothing")
+    ap.add_argument("--ids", help="with --check, only these persona ids, comma-separated")
     args = ap.parse_args()
 
     people = personas()
     if args.check:
+        if args.ids:
+            wanted = set(args.ids.split(","))
+            people = [p for p in people if p["id"] in wanted]
         raise SystemExit(1 if check(people) else 0)
     (OUT / "generated").mkdir(parents=True, exist_ok=True)
     (OUT / "personas.json").write_text(json.dumps(people, indent=2))

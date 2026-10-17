@@ -79,6 +79,20 @@ Then Opus wrote the five pilot resumes, and `make_resumes.py --check` read them.
 
 Two rules came out of the pilot. Every email and link uses example.com, so no resume points to a real person. Schools and large employers can be real. Startups and small firms get invented names, so no real small company gains a fake employee.
 
+## 7. Training on a Mac
+
+The Unsloth Studio app (a beta for macOS) installs its own Python setup with Unsloth and Apple's MLX library. That setup includes Unsloth's decision-model trainer for Apple Silicon. So the student can train on a 64 GB M5 Pro, with no cloud GPU.
+
+There are two ways to get a small decision model. One is to start from a model already trained for decisions, such as Laya, with 0.4 billion parameters. But Laya reads at most 1,024 tokens. Our teacher prompts ran from 2,031 to 4,796 tokens, with a median of 3,167. Laya would never see a whole resume and job posting.
+
+The other way is to take a plain small language model and add a fresh decision head. Unsloth calls this design Clef. The head reads one prompt holding every question and scores all their options together. We'll start with Qwen3.5 2B, which is Apache 2.0. The trainer's default limit is 4,096 tokens, so we'll raise it to cover the longest prompts.
+
+The trainer can learn from the teacher's full probabilities, not just its top answer. If the teacher says "1: 58%, 0: 40%", the student learns that the case is close. This is called soft-label distillation. It matters here because the extension's scores are probability-weighted. The student needs the teacher's doubt as well as its pick.
+
+The app also serves decision models on a local endpoint that takes the same kind of request Jev does. Once the student is trained, we can point the extension at the Mac and try it in the real popup.
+
+We'll train from a script in our own environment, with every version pinned, rather than inside the app's setup. The app updates itself. A pinned setup means a run next month repeats a run today.
+
 ## Decisions so far
 
 | Decision | Why |
@@ -89,6 +103,8 @@ Two rules came out of the pilot. Every email and link uses example.com, so no re
 | Labels from the teacher, checked by a hand-rated gold set | The gold set tests the teacher on jobs Lenny never reviewed. |
 | Jobs from Trackly, about 150 for each function | Each job comes with clean tags for function, level and company stage. |
 | Resumes: 156 written by Claude Opus 5.5, plus a few hundred from ResumeAtlas | We control the mix and the rights are clean. ResumeAtlas adds real-world mess. |
+| Train on the Mac with Unsloth's MLX trainer | The Studio app ships it, and 64 GB is enough for a 2B student. |
+| First student: Qwen3.5 2B with a Clef head, trained on soft labels | It reads a whole resume and posting, and the license allows it. Laya can't fit them. |
 
 ## Words we've used
 
@@ -102,6 +118,8 @@ Two rules came out of the pilot. Every email and link uses example.com, so no re
 | LoRA | Training a small set of added weights instead of the whole model, so fine-tuning fits on one GPU. |
 | 4-bit quantization | Storing each weight in 4 bits instead of 16. A 27B model then fits in about 16 GB, with a small loss in quality. |
 | Seed | The starting number for a random generator. The same seed gives the same "random" list every run. |
+| Soft labels | Training targets that are full probabilities, such as 58% and 40%, instead of one right answer. |
+| Token | The unit a model reads, about three quarters of an English word. |
 
 ## Next
 
@@ -109,4 +127,4 @@ Two rules came out of the pilot. Every email and link uses example.com, so no re
 2. Sample a few hundred ResumeAtlas resumes and strip their contact details.
 3. Pair and label about 3,000 resume and job pairs with the teacher, in Unsloth's training format. Test jobs stay out.
 4. Rate 50 to 100 pairs by hand for the gold set.
-5. Train the student with Unsloth and grade it on the 101 jobs.
+5. Train the student on the Mac with Unsloth's MLX trainer, then grade it on the 101 jobs.
