@@ -27,6 +27,8 @@ ROOT = Path(__file__).resolve().parent.parent
 DEFAULT_MODEL = Path.home() / ".lmstudio/models/lmstudio-community/Qwen3.8-27B-MLX-4bit"
 LEVELS = ["Weak", "Moderate", "Strong"]
 CHUNK = 2048  # prompt tokens fed per step, to keep memory flat on long jobs
+SYSTEM = ("You score how well a candidate fits a job, using only the resume and the job description. "
+          "Answer every question on its own. Reply only in the format asked for.")
 
 
 def rubric():
@@ -124,12 +126,15 @@ class Reader:
 
 
 def score_job(reader, chat_prompt, r):
+    """Returns the result in eval/score-jev.mjs's shape, the prompt length, each answer's
+    option mass, and every question's full probabilities (what a student learns from)."""
     dims = list(r["labels"])
     started = time.perf_counter()
     n_tokens = reader.start(chat_prompt)
-    mass = {}
+    mass, dist = {}, {}
 
     fit_p, mass["fit"] = reader.ask("fit=", [str(i) for i in range(5)])
+    dist["fit"] = fit_p
     fit_choice = max(fit_p, key=fit_p.get)
     reader.answer(fit_choice)
 
@@ -138,12 +143,14 @@ def score_job(reader, chat_prompt, r):
     if len(starts) != len(dims):
         raise SystemExit("Two factor names start with the same token; the why answer can't tell them apart.")
     why_p, mass["why"] = reader.ask("\nwhy=", list(starts))
+    dist["why"] = {starts[token]: p for token, p in why_p.items()}
     why_choice = starts[max(why_p, key=why_p.get)]
     reader.answer(why_choice)
 
     scorecard = {}
     for d in dims:
         p, mass[d] = reader.ask(f"\n{d}=", ["0", "1", "2"])
+        dist["dim_" + d] = p
         choice = max(p, key=p.get)
         reader.answer(choice)
         score = sum(int(k) * v for k, v in p.items())
@@ -152,6 +159,7 @@ def score_job(reader, chat_prompt, r):
     # The model also writes Yes or No, and sometimes "unknown". Both spellings
     # count, and the probability is yes over yes plus no.
     visa_p, mass["visa"] = reader.ask_groups("\nvisa=", {"yes": ["yes", "Yes"], "no": ["no", "No"]})
+    dist["visa"] = visa_p
     elapsed = round((time.perf_counter() - started) * 1000)
 
     fit = sum(int(k) * v for k, v in fit_p.items())
@@ -166,7 +174,7 @@ def score_job(reader, chat_prompt, r):
         "elapsedMs": elapsed,
         "ts": int(time.time() * 1000),
     }
-    return result, n_tokens, {k: round(v, 3) for k, v in mass.items()}
+    return result, n_tokens, {k: round(v, 3) for k, v in mass.items()}, dist
 
 
 def main():
@@ -191,8 +199,6 @@ def main():
 
     model, tok = load(args.model)
     reader = Reader(model, tok)
-    system = ("You score how well a candidate fits a job, using only the resume and the job description. "
-              "Answer every question on its own. Reply only in the format asked for.")
 
     ok = skipped = 0
     for path in todo:
@@ -209,14 +215,14 @@ def main():
             "pageUrl": job_in.get("pageUrl") or "",
         }
         state = build_state(resume, job, r["maxChars"])
-        messages = [{"role": "system", "content": system}, {"role": "user", "content": build_prompt(state, r)}]
+        messages = [{"role": "system", "content": SYSTEM}, {"role": "user", "content": build_prompt(state, r)}]
         chat = tok.apply_chat_template(messages, add_generation_prompt=True, tokenize=False, enable_thinking=False)
-        result, n_tokens, mass = score_job(reader, chat, r)
+        result, n_tokens, mass, dist = score_job(reader, chat, r)
         out = {
             "key": record.get("key"), "scoredAt": datetime.now(timezone.utc).isoformat(),
             "scoringVersion": f"teacher:{Path(args.model).name}",
             "sentTitle": job["title"], "sentCompany": job["company"], "descriptionChars": len(job["description"]),
-            "result": result, "usage": {"input_tokens": n_tokens}, "optionMass": mass,
+            "result": result, "usage": {"input_tokens": n_tokens}, "optionMass": mass, "probabilities": dist,
         }
         tmp = out_dir / (path.name + ".tmp")
         tmp.write_text(json.dumps(out, indent=2))

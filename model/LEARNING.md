@@ -121,6 +121,18 @@ The rows also come from resume template sites. The placeholder name "jessica cla
 
 So we dropped ResumeAtlas. The real-world mess it was meant to add can come from our own resumes instead. Some of them will get the damage that copying from a PDF causes, such as lost line breaks, merged columns and stray page numbers. That's called augmentation, and it lets us choose exactly which kinds of mess the student sees.
 
+## 10. Pairing jobs with resumes
+
+`build_pairs.py` picks 1,000 of the 2,265 Trackly postings: 25 entry, 25 mid and 25 senior jobs in each function, plus 25 Deployment Strategist roles. Each job gets three resumes: a likely fit from the same function and level, a partial fit, and a mismatch from an unrelated function. That's 3,000 pairs, and each resume appears 16 to 27 times. The roles only steer the mix. The teacher decides every real answer.
+
+Keeping the exam out took three checks. 14 postings had the same URL as a test job, and 3 had the same company and title. Another 153 shared more than a fifth of their text with a test job. Those turned out to be other roles at the same companies, sharing long "about us" and benefits sections. We dropped them anyway. The test now measures the student on companies it never saw in training.
+
+The teacher always reads the clean resume. About 1 in 5 pairs will reach the student with copy-paste damage, under the clean resume's label. Half the pairs also ask the visa question, the way the extension does for people who need sponsorship.
+
+`label_pairs.py` works through the pairs in a fixed shuffled order. If the run stops partway, the finished labels are still a fair sample of every function and level. Each label keeps the teacher's full probabilities for all nine questions. In the first test, a clear mismatch got "0" at 97%.
+
+The same test showed something to watch. A "likely fit" pair scored only 1.15 out of 4. These resumes weren't written for these jobs, so strong matches may be rare. If 3s and 4s barely appear after the first few hundred labels, we'll add resumes written for specific jobs.
+
 ## Decisions so far
 
 | Decision | Why |
@@ -135,6 +147,8 @@ So we dropped ResumeAtlas. The real-world mess it was meant to add can come from
 | First student: Qwen3.5 2B with a Clef head, trained on soft labels | It reads a whole resume and posting, and the license allows it. Laya can't fit them. |
 | Check generated data as a set, not only file by file | Eight writers reused the same names, which no single file revealed. |
 | Drop ResumeAtlas. Add copy-paste damage to some generated resumes instead | Its rows have no punctuation, capitals or small words, so they aren't text a user would paste. |
+| Leave out any job that shares a fifth of its text with a test job | It also drops the test companies' other roles, so the test checks companies the student never saw. |
+| Label in a shuffled order | A run that stops early still leaves a balanced sample. |
 
 ## Words we've used
 
@@ -158,6 +172,7 @@ So we dropped ResumeAtlas. The real-world mess it was meant to add can come from
 
 The 156 resumes are done, and Trackly has supplied 150 job postings for each of the 13 functions.
 
-1. Pair and label about 3,000 resume and job pairs with the teacher, in Unsloth's training format. Test jobs stay out. About 1 in 5 resumes gets copy-paste damage.
-2. Rate 50 to 100 pairs by hand for the gold set.
-3. Train the student on the Mac with Unsloth's MLX trainer, then grade it on the 101 jobs.
+1. Label the 3,000 pairs with the teacher, about 6 hours on the Mac. Then check how the answers spread from 0 to 4.
+2. Turn the labels into Unsloth's training rows, with the copy-paste damage added.
+3. Rate 50 to 100 pairs by hand for the gold set.
+4. Train the student on the Mac with Unsloth's MLX trainer, then grade it on the 101 jobs.

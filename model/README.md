@@ -40,3 +40,12 @@ python3 model/make_resumes.py --check           # length, contact details, markd
 ```
 
 `--check` prints one line per resume and a summary by writing quality. Strong resumes should have far more bullets with numbers than weak ones.
+
+## Pair and label
+
+```bash
+python3 model/build_pairs.py                                    # 1,000 jobs, 3 resumes each, test jobs left out
+caffeinate -is model/.venv/bin/python model/label_pairs.py      # the teacher labels all 3,000 pairs (about 6 hours)
+```
+
+`build_pairs.py` reads the job postings from `~/coding-projects/job-descriptions/<function>/jds/`. `label_pairs.py` can stop and restart at any point. It skips pairs that already have a label in `model/private/labels/`.
