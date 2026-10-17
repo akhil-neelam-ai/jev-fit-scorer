@@ -14,8 +14,8 @@ are invented (example.com emails, 555 phone numbers), so no real person appears.
 The resumes in model/private/resumes/generated/ were written by Claude Opus 5.5
 from prompts.jsonl, inside Claude Code (see model/LEARNING.md). Anthropic's help
 center allows Claude's outputs in training data for models that don't compete
-with its own, such as categorization tools, but not as training targets. Here
-the resumes are inputs only. The answers the student learns come from Qwen.
+with its own, such as categorization tools. It doesn't allow them as training
+targets. Here the resumes are inputs only. The answers the student learns come from Qwen.
 """
 
 import argparse
@@ -106,8 +106,8 @@ QUALITY = {
     "average": "Write it like a typical resume: some results, some generic bullets, normal formatting.",
     "weak": "Write it like a weak resume: vague bullets with few or no numbers, some filler, uneven formatting.",
 }
-LENGTHS = {"short": "about 200 words", "medium": "about 350 words", "long": "about 550 words"}
 WORDS = {"short": 200, "medium": 350, "long": 550}
+LENGTHS = {k: f"about {n} words" for k, n in WORDS.items()}
 
 
 def personas():
@@ -175,30 +175,47 @@ def name_line(text):
     return ""
 
 
-def check(people):
-    """Checks each written resume against its persona, then the names across the set.
+def within_band(words, target):
+    """Within 15% of the target, in whole numbers so 230 words on a 200 target isn't lost to float error."""
+    return 85 * target <= 100 * words <= 115 * target
+
+
+def contact_issues(text):
+    """The contact and format rules every written resume follows, generated or tailored."""
+    issues = []
+    emails = re.findall(r"[\w.+-]+@([\w-]+(?:\.[\w-]+)+)", text)
+    if not emails or any(d.lower() != "example.com" for d in emails):
+        issues.append("email must be on example.com")
+    if "555" not in text:
+        issues.append("no 555 phone number")
+    hosts = [m.group(0) for m in LINK_HOSTS.finditer(text)]
+    if any("example.com" not in line for line in text.splitlines() if LINK_HOSTS.search(line)):
+        issues.append(f"links off example.com: {', '.join(sorted(set(hosts)))}")
+    if re.search(r"^\s*#|\*\*|^\s*\*\s", text, re.M):
+        issues.append("markdown symbols")
+    return issues
+
+
+def check(people, everyone=None):
+    """Checks each written resume in `people` against its persona. Then it checks the names across
+    `everyone` (all personas by default), so a check of a few ids still catches a reused name.
     Returns the number of problems."""
-    by_quality, bad, names = {}, 0, {}
+    by_quality, bad, names, unwritten = {}, 0, {}, []
+    for p in everyone or people:
+        path = OUT / "generated" / f"{p['id']}.txt"
+        if path.exists():
+            names[p["id"]] = name_line(path.read_text())
     for p in people:
         path = OUT / "generated" / f"{p['id']}.txt"
         if not path.exists():
+            unwritten.append(p["id"])
             continue
         text = path.read_text()
-        names[p["id"]] = name_line(text)
         words, target = len(text.split()), WORDS[p["length"]]
         issues = []
-        if not 0.85 * target <= words <= 1.15 * target:
+        if not within_band(words, target):
             issues.append(f"{words} words, aimed for about {target}")
-        emails = re.findall(r"[\w.+-]+@([\w-]+(?:\.[\w-]+)+)", text)
-        if not emails or any(d.lower() != "example.com" for d in emails):
-            issues.append("email must be on example.com")
-        if "555" not in text:
-            issues.append("no 555 phone number")
-        hosts = [m.group(0) for m in LINK_HOSTS.finditer(text)]
-        if any("example.com" not in line for line in text.splitlines() if LINK_HOSTS.search(line)):
-            issues.append(f"links off example.com: {', '.join(sorted(set(hosts)))}")
-        if re.search(r"^\s*#|\*\*|^\s*\*\s", text, re.M):
-            issues.append("markdown symbols")
+        issues += contact_issues(text)
         # Share of bullets with a number in them, years left out. Strong resumes should
         # be well above weak ones, or the quality setting isn't doing its job.
         bullets = [line for line in text.splitlines() if BULLET.match(line)]
@@ -225,6 +242,10 @@ def check(people):
     if repeats:
         print("FIX  names repeat across resumes: " + "; ".join(repeats))
         bad += 1
+    print(f"checked {len(people) - len(unwritten)} of {len(people)}"
+          f"{'; not written yet: ' + ', '.join(unwritten) if unwritten else ''}")
+    if len(unwritten) == len(people):
+        bad += 1
     return bad
 
 
@@ -239,10 +260,13 @@ def main():
 
     people = personas()
     if args.check:
+        everyone = people
         if args.ids:
             wanted = set(args.ids.split(","))
             people = [p for p in people if p["id"] in wanted]
-        raise SystemExit(1 if check(people) else 0)
+            if not people:
+                raise SystemExit(f"No persona matches --ids {args.ids}")
+        raise SystemExit(1 if check(people, everyone) else 0)
     (OUT / "generated").mkdir(parents=True, exist_ok=True)
     (OUT / "personas.json").write_text(json.dumps(people, indent=2))
     # The exact prompt for each persona, so any model can write the same set.

@@ -27,7 +27,8 @@ check("the setup guide counts as loaded", referenced.has("welcome.html") && refe
 const missingGuide = checkAllowlist(ALLOWLIST.filter((f) => f !== "welcome.html"));
 check("leaving the setup guide off the list is caught", missingGuide.problems.some((p) => p.includes("loads welcome.html")));
 
-for (const bad of ["eval/private/resume.txt", "eval/private/backups/x.bundle", ".env", "site/index.html", "README.md", "cli.js"]) {
+for (const bad of ["eval/private/resume.txt", "eval/private/backups/x.bundle", "model/private/rows/train.jsonl",
+  "model/private/resumes/generated/p001.txt", ".env", "site/index.html", "README.md", "cli.js"]) {
   const result = checkAllowlist([...ALLOWLIST, bad]);
   // Pin the reason, not just the path: a file that doesn't exist on disk also starts its message with the path.
   check(`${bad} can never be added to the list`, result.problems.some((p) => p.startsWith(bad) && p.includes("must never ship")));

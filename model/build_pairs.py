@@ -1,14 +1,15 @@
 """Pick the training jobs and pair each one with three of the generated resumes.
 
-Each job gets a likely fit (same function, a level the job hires at), a partial
-fit (same function at the wrong level, or a nearby function at the right level)
-and a mismatch (an unrelated function). The teacher decides the real answers.
-The three roles only make sure every answer from 0 to 4 shows up often.
+Each job gets three resumes. The likely fit has the same function and a level
+the job hires at. The partial fit has the same function at the wrong level, or a
+nearby function at the right level. The mismatch has an unrelated function. The
+teacher decides the real answers. The roles only make every answer from 0 to 4
+show up often.
 
 A job is left out when it matches a test job by URL, by company and title, or by
-sharing much of its text with one, so the student never studies the exam. About
-1 in 5 pairs is marked for copy-paste damage and about half ask the visa
-question, both decided here so every later step agrees.
+shared text, so the student never studies the exam. About 1 in 5 pairs is
+marked for copy-paste damage, and about half ask the visa question. Both are
+decided here so every later step agrees.
 
   python3 model/build_pairs.py      # writes model/private/pairs/jobs.jsonl and pairs.jsonl
 """
@@ -26,6 +27,7 @@ RESUMES = ROOT / "model/private/resumes"
 TEST = ROOT / "eval/private/lenny"
 OUT = ROOT / "model/private/pairs"
 SEED = 20261017
+ORDER_SEED = 20261018  # the order the teacher labels pairs in
 PER_BUCKET = 25  # jobs per seniority bucket in each function, so 75 per function
 NICHE_JOBS = 25  # Deployment Strategist postings, kept small so one rare title can't dominate
 DAMAGE_SHARE = 0.2
@@ -174,6 +176,14 @@ def pick(candidates, used, rng):
     choice = rng.choice([p for p in candidates if used[p["id"]] == least])
     used[choice["id"]] += 1
     return choice
+
+
+def label_order(pairs):
+    """The pairs in the fixed shuffled order the teacher labels them in.
+    Any prefix of it covers every function and level evenly."""
+    order = list(pairs)
+    random.Random(ORDER_SEED).shuffle(order)
+    return order
 
 
 def main():

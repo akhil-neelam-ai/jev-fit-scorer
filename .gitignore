@@ -16,6 +16,7 @@ eval/private/
 
 # Model project: local Python env and all data (jobs, resumes, labels, checkpoints).
 model/.venv/
+model/.venv-train/
 model/private/
 
 # Python bytecode
