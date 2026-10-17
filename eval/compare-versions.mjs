@@ -2,8 +2,14 @@
 // Compare ways of turning Jev's answers into a 1-10 score that matches Lenny's,
 // using 5-fold cross-validation so no job is scored by a model fit on it.
 //   node eval/compare-versions.mjs
+// --extra grades one more results folder (same shape as score-jev.mjs writes)
+// with the same methods, on the same jobs and folds, next to Jev:
+//   node eval/compare-versions.mjs --extra eval/private/teacher-qwen38 --extra-name qwen38
 import { readFile, readdir, writeFile, mkdir } from "node:fs/promises";
+import { parseArgs } from "node:util";
 
+const { values: args } = parseArgs({ options: { extra: { type: "string" }, "extra-name": { type: "string", default: "extra" } } });
+const EXTRA = args.extra, XN = args["extra-name"];
 const LENNY = "eval/private/lenny", V4 = "eval/private/jev", V5 = "eval/private/jev-v5", OUT = "eval/private/analysis";
 await mkdir(OUT, { recursive: true });
 const DIMS = ["role_level", "function", "domain", "company_stage", "customer_type", "required_qualifications"];
@@ -20,10 +26,13 @@ function clean(l) {
 }
 const read = async (dir, f) => JSON.parse(await readFile(`${dir}/${f}`, "utf8"));
 const jobs = [];
+let missingExtra = 0;
 for (const f of (await readdir(LENNY)).filter((f) => f.endsWith(".json"))) {
   const l = await read(LENNY, f);
   if (l.lenny?.result?.fit_score == null || !clean(l)) continue;
-  let v4, v5; try { v4 = await read(V4, f); v5 = await read(V5, f); } catch { continue; }
+  let v4, v5, x; try { v4 = await read(V4, f); v5 = await read(V5, f); } catch { continue; }
+  // Every method is graded on the same jobs, so a job the extra model lacks is left out for all.
+  if (EXTRA) { try { x = await read(EXTRA, f); } catch { missingExtra++; continue; } }
   const r = l.lenny.result, sc = Object.fromEntries(r.scorecard.map((d) => [d.dimension, d.rating]));
   const text = `${r.summary_opinion} ${(r.gaps || []).join(" ")}`;
   jobs.push({
@@ -33,7 +42,8 @@ for (const f of (await readdir(LENNY)).filter((f) => f.endsWith(".json"))) {
     jevDims: DIMS.map((d) => v5.result.scorecard?.[d]?.score ?? 1),
     jevLabels: Object.fromEntries(DIMS.map((d) => [d, v5.result.scorecard?.[d]?.label?.toLowerCase()])),
     eligibility: /work[- ]authoriz|visa|sponsor|export[- ]control|citizen|clearance|right to work/i.test(text),
-    tokens4: v4.result.inputTokens, tokens5: v5.result.inputTokens, ms4: v4.result.elapsedMs, ms5: v5.result.elapsedMs
+    tokens4: v4.result.inputTokens, tokens5: v5.result.inputTokens, ms4: v4.result.elapsedMs, ms5: v5.result.elapsedMs,
+    ...(x ? { x: x.result.fit, xDims: DIMS.map((d) => x.result.scorecard?.[d]?.score ?? 1), msX: x.result.elapsedMs } : {})
   });
 }
 const n = jobs.length;
@@ -87,6 +97,12 @@ const METHODS = {
   "F2 v5 scorecard, non-negative weights": { fit: (tr) => { const f = ridgeNonNeg(tr.map((j) => j.jevDims), tr.map((j) => j.L)); return (j) => f(j.jevDims); } },
   "G2 blend of D and F2": { fit: (tr) => { const d = isotonic(tr.map((j) => ({ x: j.v5, y: j.L }))), f = ridgeNonNeg(tr.map((j) => j.jevDims), tr.map((j) => j.L)); return (j) => (d(j.v5) + f(j.jevDims)) / 2; } }
 };
+// The same three ways of turning answers into a score as D, F2 and G2 (G2 is what the extension ships).
+if (EXTRA) Object.assign(METHODS, {
+  [`XD  ${XN} + calibration`]: { fit: (tr) => { const f = isotonic(tr.map((j) => ({ x: j.x, y: j.L }))); return (j) => f(j.x); } },
+  [`XF2 ${XN} scorecard, non-negative weights`]: { fit: (tr) => { const f = ridgeNonNeg(tr.map((j) => j.xDims), tr.map((j) => j.L)); return (j) => f(j.xDims); } },
+  [`XG2 ${XN} blend of XD and XF2`]: { fit: (tr) => { const d = isotonic(tr.map((j) => ({ x: j.x, y: j.L }))), f = ridgeNonNeg(tr.map((j) => j.xDims), tr.map((j) => j.L)); return (j) => (d(j.x) + f(j.xDims)) / 2; } }
+});
 
 // Deterministic folds by key hash.
 const h = (s) => [...s].reduce((a, c) => (a * 31 + c.charCodeAt(0)) >>> 0, 7);
@@ -118,6 +134,10 @@ const stats = Object.fromEntries(Object.entries(pred).map(([name, p]) => {
 
 const out = [];
 out.push(`# Scoring versions compared`, ``, `${n} jobs. Every number below is cross-validated (5 folds): each job's score comes from a model fit on the other four fifths. Errors are measured on the 1 to 10 score a user would see.`, ``);
+if (EXTRA) {
+  const gx = bootDiff(pred[`XG2 ${XN} blend of XD and XF2`], pred["G2 blend of D and F2"]);
+  out.push(`Extra model: ${XN} (${EXTRA}).${missingExtra ? ` ${missingExtra} jobs it hasn't scored are left out for every method.` : ""} Shipping method on its answers (XG2) versus on Jev's (G2) changes the mean absolute gap by ${fmt(stats[`XG2 ${XN} blend of XD and XF2`].mae - stats["G2 blend of D and F2"].mae)} (95% CI ${fmt(gx[0])} to ${fmt(gx[1])}). Median ${XN} time per job: ${[...jobs.map((j) => j.msX)].sort((a, b) => a - b)[n >> 1]} ms.`, ``);
+}
 out.push(`| Method | Mean abs gap (95% CI) | Avg gap | Rank agreement | Within 1 | Exact | Bucket kappa |`, `| --- | --- | --- | --- | --- | --- | --- |`);
 for (const [name, s] of Object.entries(stats)) out.push(`| ${name} | ${fmt(s.mae)} (${fmt(s.ci[0])} to ${fmt(s.ci[1])}) | ${fmt(s.bias)} | ${fmt(s.rho)} | ${s.within1}/${n} | ${s.exact}/${n} | ${fmt(s.kappa)} |`);
 const names = Object.keys(stats), best = names.reduce((a, b) => (stats[b].mae < stats[a].mae ? b : a));
@@ -149,7 +169,13 @@ out.push(``, `## Cost`, ``, `v4 median ${Math.round(mean(jobs.map((j) => j.token
 // Final parameters, fit on all jobs, for shipping.
 const finalIso = isotonic(jobs.map((j) => ({ x: j.v5, y: j.L })));
 const finalLin = ridgeNonNeg(jobs.map((j) => j.jevDims), jobs.map((j) => j.L));
-await writeFile(`${OUT}/version-comparison.md`, out.join("\n") + "\n");
-await writeFile(`${OUT}/version-comparison.json`, JSON.stringify({ n, stats, best, calibrationKnots: finalIso.knots, scorecardWeights: { intercept: finalLin.beta[0], ...Object.fromEntries(DIMS.map((d, i) => [d, finalLin.beta[i + 1]])) } }, null, 2));
-await writeFile(`${OUT}/predictions.json`, JSON.stringify(jobs.map((j, i) => ({ key: j.key, stratum: j.stratum, lenny: j.L, v4: j.v4, v5: j.v5, ...Object.fromEntries(names.map((nm) => [nm.split(" ")[0], pred[nm][i]])) })), null, 2));
+// With --extra, write next to the Jev-only report instead of over it.
+const suffix = EXTRA ? `-${XN}` : "";
+const extraFinal = EXTRA ? (() => {
+  const iso = isotonic(jobs.map((j) => ({ x: j.x, y: j.L }))), lin = ridgeNonNeg(jobs.map((j) => j.xDims), jobs.map((j) => j.L));
+  return { extraCalibrationKnots: iso.knots, extraScorecardWeights: { intercept: lin.beta[0], ...Object.fromEntries(DIMS.map((d, i) => [d, lin.beta[i + 1]])) } };
+})() : {};
+await writeFile(`${OUT}/version-comparison${suffix}.md`, out.join("\n") + "\n");
+await writeFile(`${OUT}/version-comparison${suffix}.json`, JSON.stringify({ n, stats, best, calibrationKnots: finalIso.knots, scorecardWeights: { intercept: finalLin.beta[0], ...Object.fromEntries(DIMS.map((d, i) => [d, finalLin.beta[i + 1]])) }, ...extraFinal }, null, 2));
+await writeFile(`${OUT}/predictions${suffix}.json`, JSON.stringify(jobs.map((j, i) => ({ key: j.key, stratum: j.stratum, lenny: j.L, v4: j.v4, v5: j.v5, ...Object.fromEntries(names.map((nm) => [nm.split(" ")[0], pred[nm][i]])) })), null, 2));
 console.log(out.join("\n"));

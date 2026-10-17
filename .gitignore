@@ -13,3 +13,7 @@ eval/private/
 
 # Vercel link metadata for site/
 .vercel/
+
+# Model project: local Python env and all data (jobs, resumes, labels, checkpoints).
+model/.venv/
+model/private/
