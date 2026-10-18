@@ -1,6 +1,7 @@
 ---
 title: Parallel LLM writers share favorites, so check the set and assign names in code
 date: 2026-10-16
+last_updated: 2026-10-18
 category: workflow-issues
 module: synthetic-resume-generation
 problem_type: workflow_issue
@@ -13,7 +14,8 @@ applies_when:
   - Every per-file check passes but nobody has measured the set as a whole for repeats or missing vocabulary
   - The writers inherit a workspace CLAUDE.md or style guide that the generated data should not follow
   - A seeded generator already produced prompts that writers used, and more items must be added without changing the old ones
-tags: ["synthetic-data", "parallel-agents", "mode-collapse", "set-level-validation", "name-collisions", "style-leak", "claude-md", "seeded-generation"]
+  - A new check, such as a phone or link pattern, is about to judge data written in many countries' styles
+tags: ["synthetic-data", "parallel-agents", "mode-collapse", "set-level-validation", "name-collisions", "style-leak", "claude-md", "seeded-generation", "regex-checks", "real-data-testing"]
 ---
 
 # Parallel LLM writers share favorites, so check the set and assign names in code
@@ -24,7 +26,7 @@ Eight Claude Opus 5.5 subagents wrote 156 synthetic resumes in parallel, about 1
 
 Counted as a set, the resumes had problems no single file showed. Three writers each named their person "Marisol Quintanilla". Two chose "Devin Marchetti". The first name "Kristine" appeared on 5 resumes, and so did the surname "Marchetti". The brief had told the writers to avoid stock names, so all of them reached for the same "unusual" ones.
 
-A second batch of 143 resumes, written for specific job postings, needed the same fix before any writer started. Three more traps turned up in the same pipeline. A style rule leaked in from the workspace. A seeded generator would have shifted if anyone added a draw. A float comparison failed at a tolerance edge.
+A second batch of 143 resumes, written for specific job postings, needed the same fix before any writer started. Four more traps turned up in the same pipeline. A style rule leaked in from the workspace. A seeded generator would have shifted if anyone added a draw. A float comparison failed at a tolerance edge. And a stricter contact check was wrong until it ran on the real resumes.
 
 ## Guidance
 
@@ -112,11 +114,14 @@ No per-file check can see this, because one resume without "leveraged" is normal
 A seeded loop is a sequence. One extra draw inside it shifts every later draw, which silently changes the personas, and so the prompts, for resumes already written. Give new draws their own generator, and read the saved plan instead of rebuilding it:
 
 ```python
-def cross_pairs():
+def cross_pairs(force=False):
+    ...  # refuses to rewrite the cross pairs once any of them has a teacher label
     rng = random.Random(SEED + 1)
     plan = json.loads((PROMPTS.parent / "plan.json").read_text())
     ...
 ```
+
+`build_pairs.py` got the same guard. It refuses to rewrite the pairs or jobs that existing labels depend on.
 
 Then refuse to rebuild prompts once outputs exist:
 
@@ -139,6 +144,14 @@ def within_band(words, target):
 
 A unit test in `model/tests/test_pipeline.py` pins both edges: 230 and 170 pass, 231 and 169 fail. The check must also match the brief. An earlier version allowed 20% while the writers were told 15%.
 
+### Run a new check on the real set before trusting it
+
+The first contact check was loose. It passed a resume if "555" appeared anywhere, and passed a real LinkedIn link if the same line held an example.com email. The stricter version checks each phone number and each link on its own.
+
+Its first draft flagged 8 of the 299 resumes for having no phone. All 8 had one, in the styles of India, France, the UK, Australia, the Netherlands and Germany. The pattern only knew American numbers. The second draft accepted those but counted "P.O. Box 40512-00100, Nairobi" as a phone without 555. Now the rule skips numbers after a standalone "Box", and all 299 pass.
+
+A test written from the author's own examples would have passed both broken drafts. So run any new check over the full real set before writing its tests, then turn every surprise into a test case. `test_phone_formats_from_other_countries` and `test_years_and_postal_boxes_are_not_phones` hold them now.
+
 ## Why This Matters
 
 - The per-file checks gave a false all-clear. All 156 resumes passed while names repeated across the set. Writers can't see each other's output, so the set holds less variety than its count suggests. Names are the visible sign, and other shared habits are harder to spot.
@@ -155,6 +168,7 @@ A unit test in `model/tests/test_pipeline.py` pins both edges: 230 and 170 pass,
 - A seeded generator has produced outputs you want to keep, and you are adding a field, a pair type or a batch.
 - Subagents run in a workspace whose instruction file carries style rules.
 - A length or count tolerance is written as a percentage.
+- A new pattern check, for phones, links or dates, is about to judge data from many countries.
 
 ## Examples
 
@@ -170,6 +184,7 @@ Result: `make_resumes.py --check` and `make_tailored.py --check` exit 0 on all 2
 
 ## Related
 
-- `model/LEARNING.md`, lesson 8, is the project-log account of the same incident, and lesson 6 covers draw-order shifts in seeded generators.
+- `model/LEARNING.md`, lesson 8, is the project-log account of the same incident, and lesson 6 covers draw-order shifts in seeded generators. Lesson 15 covers the contact check.
+- `docs/solutions/architecture-patterns/stamp-teacher-labels-with-a-prompt-hash-and-refuse-to-mix-stamps.md` guards the same pipeline one stage later, on the teacher's labels.
 - `docs/solutions/conventions/package-chrome-extension-from-allowlist-never-zip-repo-root.md` shares the principle of enforcing a rule with a script that fails closed.
 - `docs/plans/2026-10-16-001-feat-train-student-decision-model-plan.md` is the plan this data feeds.
