@@ -206,6 +206,25 @@ So every label now carries a stamp. It's a short hash of everything that decides
 
 The first version only hashed the system prompt, the questions and the prompt template. The code review pointed out what it missed, such as the state template and the code that reads the answers. So the 3,286 labels were stamped twice, once under each definition. Both times git showed nothing they cover had changed since the first label. Each backfilled label says so in a `stampedBy` field.
 
+## 17. The first grade
+
+The student trained for 4.6 hours: 626 steps over 2 epochs, never above 9 GB of memory. Its training loss fell from 1.12 to about 0.54 within the first epoch, then flattened near 0.5. Most of what it learned, it learned early.
+
+Then came the scoreboard on the 101 test jobs, using the same method we ship for Jev.
+
+| | Mean gap from Lenny | Rank agreement | Within 1 point |
+|---|---|---|---|
+| Jev | 0.59 | 0.83 | 93 of 101 |
+| Student, Qwen3.5 2B | 0.62 | 0.82 | 92 of 101 |
+
+The teacher it learned from scored 0.63. The student's gap is 0.03 above Jev's, but the 95% interval runs from -0.10 to +0.16. That's inside the noise of a 101-job test. The plan set its bar before training: a gap of 0.74 or less, with an interval that includes zero, counts as close enough. This lands there.
+
+It's weaker on internships and entry APM roles (0.91 and 0.74, against Jev's 0.73 and 0.47). It's better on most PM roles (0.47 against 0.58). It answers in about half a second on the Mac, with no API key.
+
+Two worries didn't show up in the grade. Calibration made no difference, since the calibrated and uncalibrated students both scored 0.62. The grade fits its own score mapping for each model, which absorbs the change in temperature. And the thin supply of 2s didn't sink the result, so the extra resumes aimed at a 2 can wait.
+
+One good run can be luck, though. The plan's next step for this row is a second training run with a different seed. If it agrees, that's a result.
+
 ## Decisions so far
 
 | Decision | Why |
@@ -254,9 +273,8 @@ The first version only hashed the system prompt, the questions and the prompt te
 
 ## Next
 
-All 3,286 pairs are labeled, and `make_rows.py` has written 2,503 training rows and 755 validation rows.
+The first student is trained and graded: 0.62 against Jev's 0.59, within the test's noise (lesson 17).
 
-1. Train the student on the Mac, about 5 to 6 hours. The smoke runs passed (lesson 14).
-2. Grade it on the 101 jobs with `student_eval.py` and `eval/compare-versions.mjs`.
-3. If the middle of the scale is weak, write more resumes aimed at a 2 (lesson 12).
-4. Try the student from the CLI through the Unsloth app's local endpoint.
+1. Train a second student with a different seed, about 4.6 hours, to confirm the first wasn't luck.
+2. Try the student from the CLI through the Unsloth app's local endpoint.
+3. If both hold, plan how a local option could ship.
