@@ -190,6 +190,22 @@ The save itself was fine. The adapters, reloaded over a 4-bit base, matched to 0
 
 So the student now trains over the 16-bit base, the same one that gets merged and served. It ran no slower, at about 25 seconds a step, and the reload check passed at 0.007. That's why the check exists. It compares the model you grade with the model you trained. A mismatch then shows up in a ten-minute smoke run, not after a six-hour one.
 
+## 15. Run a new rule on the real data before trusting it
+
+The resume check had a loose phone rule. It passed a resume if "555" appeared anywhere. It also passed a real LinkedIn link if the same line held an example.com email. So we wrote a stricter rule that checks each phone number and each link on its own.
+
+The first version flagged 8 of the 299 resumes for having no phone at all. All 8 had one, in the styles of India, France, the UK, Australia, the Netherlands and Germany. The pattern only knew American numbers. A test written from my own examples would have passed, because I'd have picked American examples.
+
+The second version flagged one more, "P.O. Box 40512-00100, Nairobi". That's a Kenyan postal box, and the real phone sat on the next line. The rule now skips numbers after "Box", and all 299 resumes pass. The tests now hold every format the real resumes taught us.
+
+## 16. Stamp each label with the question it answered
+
+A label only means something next to the question it answers. If the rubric in `scoring.js` changes, old labels answer a different question than new ones. Mixing them would teach the student two versions at once.
+
+So every label now carries a stamp. It's a short hash of everything that decides a label besides the pair itself. That means the questions from `scoring.js`, plus the parts of `teacher_eval.py` that build the prompt and read the answers. The labeler won't add labels under a new stamp, or from another teacher, while older ones sit in the folder. The rows script goes further. It works out today's stamp and refuses labels that don't carry it, so a rubric edit after labeling can't slip into the rows.
+
+The first version only hashed the system prompt, the questions and the prompt template. The code review pointed out what it missed, such as the state template and the code that reads the answers. So the 3,286 labels were stamped twice, once under each definition. Both times git showed nothing they cover had changed since the first label. Each backfilled label says so in a `stampedBy` field.
+
 ## Decisions so far
 
 | Decision | Why |
@@ -212,6 +228,8 @@ So the student now trains over the 16-bit base, the same one that gets merged an
 | A tailored resume goes wherever its posting goes: validation, or out of every row | Text written from a held-out or flagged posting must never train. |
 | Keep Unsloth's calibration, and save the adapters from before it too | The grade refits a score mapping for each model, which absorbs most of a temperature change. The saved adapters keep an uncalibrated grade possible. |
 | Train over the 16-bit base, not a 4-bit copy | The merged model is 16-bit. Adapters trained over 4-bit answered up to 0.13 differently once merged, and 16-bit ran no slower. |
+| Check each phone number and link in a resume on its own | A rule per line let a real LinkedIn link pass next to an example.com email. |
+| Stamp every label with a hash of the prompt it answered | Labels from two prompt versions would teach two questions at once. |
 
 ## Words we've used
 
@@ -221,6 +239,7 @@ So the student now trains over the 16-bit base, the same one that gets merged an
 | Calibration curve | A mapping from a model's raw scores onto the scale you care about. |
 | Cross-validation | Fitting on part of the data, scoring on the rest, then rotating. |
 | Distillation | Training a small student to copy a large teacher's answers. |
+| Hash | A short fingerprint of some text. Change one character and the fingerprint changes. |
 | Leakage | Test data reaching the training set, which inflates the score. |
 | Mode collapse | A model's habit of giving the same few answers when you asked for variety. |
 | Augmentation | Changing copies of your training data on purpose, such as adding copy-paste damage, so the model learns to handle it. |

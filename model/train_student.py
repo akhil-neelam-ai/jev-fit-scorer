@@ -37,9 +37,26 @@ BASE_REVISION = "fffbc0d8711cf87df6d1f97938c5e50ef94aadc7"  # the exact commit d
 MAX_SKIPPED = 0.02  # share of answers the dataset builder may skip before the run stops
 
 
-def load_rows(name, limit=None):
-    rows = [json.loads(line) for line in (ROWS / f"{name}.jsonl").read_text().splitlines()]
-    return rows[:limit] if limit else rows
+def read_rows(smoke=False, rows_dir=None):
+    """The training and validation rows, each file read once, with the hash of the bytes parsed.
+
+    The rows must match the manifest make_rows.py wrote with them. That ties the run to
+    the prompt and labels the rows came from, and catches rows changed or half-written since.
+    """
+    rows_dir = rows_dir or ROWS
+    manifest_path = rows_dir / "manifest.json"
+    if not manifest_path.exists():
+        raise SystemExit(f"No {manifest_path}. Rebuild the rows with python3 model/make_rows.py.")
+    manifest = json.loads(manifest_path.read_text())
+    rows, sha1 = {}, {}
+    for name, limit in (("train", 64), ("valid", 16)):
+        data = (rows_dir / f"{name}.jsonl").read_bytes()
+        sha1[name] = hashlib.sha1(data).hexdigest()
+        if sha1[name] != manifest.get(f"{name}_sha1"):
+            raise SystemExit(f"{name}.jsonl doesn't match its manifest. Rebuild the rows with python3 model/make_rows.py.")
+        parsed = [json.loads(line) for line in data.decode().splitlines()]
+        rows[name] = parsed[:limit] if smoke else parsed
+    return rows["train"], rows["valid"], {"sha1": sha1, "manifest": manifest}
 
 
 def too_many_skipped(report):
@@ -71,6 +88,12 @@ def main():
         shutil.rmtree(out)  # a fresh smoke run starts clean, so old checkpoints can't be picked up
     if args.resume and not any((out / "checkpoints").glob("checkpoint-*")):
         raise SystemExit(f"No checkpoint to resume in {out / 'checkpoints'}.")
+    # The rows are read and checked before the slow load, and a resumed run must see the same rows.
+    train_rows, valid_rows, rows = read_rows(args.smoke)
+    if args.resume and (out / "rows.json").exists() and json.loads((out / "rows.json").read_text())["sha1"] != rows["sha1"]:
+        raise SystemExit(f"The rows changed since {out.name} started, so it can't resume. Start a new --name.")
+    out.mkdir(parents=True, exist_ok=True)
+    (out / "rows.json").write_text(json.dumps(rows, indent=2))
 
     from transformers import TrainingArguments
     from unsloth import DecisionTrainer, FastDecisionModel
@@ -82,8 +105,8 @@ def main():
                                                          max_seq_length=args.max_seq, load_in_4bit=args.four_bit)
     model = FastDecisionModel.get_peft_model(model, r=16, lora_alpha=16, lora_dropout=0,
                                              use_gradient_checkpointing="unsloth", random_state=3407)
-    train_items, train_report = FastDecisionModel.build_dataset(load_rows("train", 64 if args.smoke else None), tokenizer, model)
-    valid_items, valid_report = FastDecisionModel.build_dataset(load_rows("valid", 16 if args.smoke else None), tokenizer, model)
+    train_items, train_report = FastDecisionModel.build_dataset(train_rows, tokenizer, model)
+    valid_items, valid_report = FastDecisionModel.build_dataset(valid_rows, tokenizer, model)
     print(f"train items: {len(train_items)} {train_report}", flush=True)
     print(f"valid items: {len(valid_items)} {valid_report}", flush=True)
     for name, items, report in (("training", train_items, train_report), ("validation", valid_items, valid_report)):
@@ -130,12 +153,12 @@ def main():
     # A few validation answers from the model in memory, with their inputs, for student_eval.py --check-reload.
     preview = [{"id": r["id"], "state": r["state"], "questions": r["questions"],
                 "answers": FastDecisionModel.predict(model, tokenizer, r["state"], r["questions"])}
-               for r in load_rows("valid", 3)]
+               for r in valid_rows[:3]]
     (out / "preview.json").write_text(json.dumps(preview, indent=1, default=str))
     (out / "summary.json").write_text(json.dumps({
         "base": args.base, "revision": args.revision, "load_in_4bit": args.four_bit, "epochs": args.epochs,
         "lr": args.lr, "max_seq": args.max_seq, "steps": args.steps, "train_items": len(train_items), "valid_items": len(valid_items),
-        "rows": {name: hashlib.sha1((ROWS / f"{name}.jsonl").read_bytes()).hexdigest() for name in ("train", "valid")},
+        "rows": rows,
         "metrics": metrics, "temperatures": temperatures, "minutes": round((time.time() - started) / 60, 1),
     }, indent=2, default=str))
     print(f"saved to {out} in {(time.time() - started) / 60:.1f} minutes", flush=True)

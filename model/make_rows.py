@@ -43,7 +43,8 @@ from collections import Counter, defaultdict
 from pathlib import Path
 
 from build_pairs import norm_role, norm_url, shingles
-from label_pairs import PAIR_FILES
+from label_pairs import PAIR_FILES, label_problems
+from teacher_prompt import prompt_stamp
 
 ROOT = Path(__file__).resolve().parent.parent
 PAIRS = ROOT / "model/private/pairs"
@@ -252,6 +253,19 @@ def split_for(pair, sources):
     return "valid", "new job and new resume" if job_out and resume_out else "new job" if job_out else "new resume"
 
 
+def write_rows(files, info):
+    """The rows, then a manifest of what they came from with the hash of each file as written.
+    The old manifest goes first, so a crash halfway leaves no manifest next to new rows."""
+    OUT.mkdir(parents=True, exist_ok=True)
+    (OUT / "manifest.json").unlink(missing_ok=True)
+    for split, rows in files.items():
+        (OUT / f"{split}.jsonl").write_text("".join(json.dumps(r) + "\n" for r in rows))
+    (OUT / "manifest.json").write_text(json.dumps({
+        **info, **{split: len(rows) for split, rows in files.items()},
+        **{f"{split}_sha1": hashlib.sha1((OUT / f"{split}.jsonl").read_bytes()).hexdigest() for split in files},
+    }, indent=2))
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--pairs", nargs="+", default=PAIR_FILES, help="pair files in model/private/pairs/")
@@ -260,7 +274,7 @@ def main():
     args = ap.parse_args()
 
     jobs = {j["id"]: j for j in map(json.loads, (PAIRS / "jobs.jsonl").read_text().splitlines())}
-    pairs, short = [], []
+    pairs, short, coverage = [], [], {}
     for name in args.pairs:
         if not (PAIRS / name).exists():
             print(f"  {name}: missing")
@@ -269,6 +283,7 @@ def main():
         mine = [json.loads(line) for line in (PAIRS / name).read_text().splitlines()]
         done = sum(1 for p in mine if (LABELS / f"{p['pair_id']}.json").exists())
         print(f"  {name}: {done} of {len(mine)} labeled")
+        coverage[name] = [done, len(mine)]
         if done < MIN_COVERAGE * len(mine):
             short.append(name)
         pairs += mine
@@ -276,6 +291,13 @@ def main():
         raise SystemExit(f"Missing or under {MIN_COVERAGE:.0%} labeled: {', '.join(short)}. "
                          "Run label_pairs.py, or pass --allow-partial.")
     labeled = [p for p in pairs if (LABELS / f"{p['pair_id']}.json").exists()]
+    labels = {p["pair_id"]: json.loads((LABELS / f"{p['pair_id']}.json").read_text()) for p in labeled}
+    # The labels must answer the questions these rows will ask, so they must carry today's stamp.
+    prompt = prompt_stamp()
+    if problem := label_problems(labels.values(), prompt):
+        raise SystemExit(problem)
+    teacher = next(iter(labels.values())).get("teacher")
+    print(f"all {len(labels)} labels answered the current prompt {prompt}, from {teacher}")
 
     sources = tailored_sources()
     unplanned = sorted({p["resume_id"] for p in labeled if p.get("resume_dir") == "tailored"} - set(sources))
@@ -323,7 +345,7 @@ def main():
     spread = {split: defaultdict(Counter) for split in files}
     slices, dropped_rows, dropped_visa = Counter(), 0, 0
     for p, state in zip(labeled, states):
-        row, visa_removed = row_for(p, state, json.loads((LABELS / f"{p['pair_id']}.json").read_text()), questions)
+        row, visa_removed = row_for(p, state, labels[p["pair_id"]], questions)
         if row is None:
             dropped_rows += 1
             continue
@@ -337,11 +359,11 @@ def main():
     if empty:
         raise SystemExit(f"No {' or '.join(empty)} rows, so nothing was written.")
 
-    OUT.mkdir(parents=True, exist_ok=True)
     rng = random.Random(SHUFFLE_SEED)
-    for split, rows in files.items():
+    for rows in files.values():
         rng.shuffle(rows)
-        (OUT / f"{split}.jsonl").write_text("".join(json.dumps(r) + "\n" for r in rows))
+    write_rows(files, {"prompt": prompt, "teacher": teacher, "pairs": coverage, "allow_partial": args.allow_partial,
+                       "skip_resume_check": args.skip_resume_check})
     print(f"train rows: {len(files['train'])}, valid rows: {len(files['valid'])} ({dict(slices)})")
     print(f"rows dropped for an unclear teacher answer: {dropped_rows}; visa answers dropped: {dropped_visa}")
     print("teacher's top fit answer in training rows, by pair type:")

@@ -26,6 +26,7 @@ JOBS_DIR = Path.home() / "coding-projects/job-descriptions"
 RESUMES = ROOT / "model/private/resumes"
 TEST = ROOT / "eval/private/lenny"
 OUT = ROOT / "model/private/pairs"
+LABELS = ROOT / "model/private/labels"
 SEED = 20261017
 ORDER_SEED = 20261018  # the order the teacher labels pairs in
 PER_BUCKET = 25  # jobs per seniority bucket in each function, so 75 per function
@@ -103,8 +104,12 @@ def shingles(text):
 
 def test_index():
     """What identifies each test job: its URLs, its company and title, and its text."""
+    files = sorted(TEST.glob("*.json"))
+    if not files:
+        raise SystemExit(f"No test jobs in {TEST}, so no leak check is possible. Restore that folder from the machine "
+                         "that collected it. Don't make stand-in test jobs.")
     urls, roles, by_shingle = set(), set(), defaultdict(set)
-    for path in sorted(TEST.glob("*.json")):
+    for path in files:
         record = json.loads(path.read_text())
         job, card = record.get("job") or {}, record.get("card") or {}
         for url in (job.get("pageUrl"), card.get("url")):
@@ -186,9 +191,29 @@ def label_order(pairs):
     return order
 
 
+def needs_writing(new, force=False):
+    """Whether the new {file name: text} output should be written over what's in OUT.
+
+    An unchanged output isn't rewritten. A changed one is refused while any labels exist,
+    because labels are keyed by pair id and the tailored pairs depend on jobs.jsonl too.
+    """
+    changed = [name for name, text in new.items() if not (OUT / name).exists() or (OUT / name).read_text() != text]
+    if not changed:
+        return False
+    labels = sum(1 for _ in LABELS.glob("*.json"))
+    if labels and not force:
+        raise SystemExit(f"This run would rewrite {', '.join(changed)}, but {labels} labels depend on them. "
+                         f"Move the labels aside with mv {LABELS} {LABELS}-old, or pass --force to rewrite anyway.")
+    return True
+
+
 def main():
     ap = argparse.ArgumentParser()
-    ap.parse_args()
+    ap.add_argument("--force", action="store_true", help="rewrite the pairs even though labels depend on them")
+    args = ap.parse_args()
+    from label_pairs import refuse_if_labeling  # here, since label_pairs imports this module
+
+    refuse_if_labeling()  # even with --force: a run in progress reads these files
     rng = random.Random(SEED)
     people = [p for p in json.loads((RESUMES / "personas.json").read_text()) if (RESUMES / "generated" / f"{p['id']}.txt").exists()]
 
@@ -241,9 +266,13 @@ def main():
                 "visa": rng.random() < VISA_SHARE,
             })
 
-    OUT.mkdir(parents=True, exist_ok=True)
-    (OUT / "jobs.jsonl").write_text("".join(json.dumps(j) + "\n" for j in chosen))
-    (OUT / "pairs.jsonl").write_text("".join(json.dumps(p) + "\n" for p in pairs))
+    new = {"jobs.jsonl": "".join(json.dumps(j) + "\n" for j in chosen),
+           "pairs.jsonl": "".join(json.dumps(p) + "\n" for p in pairs)}
+    written = needs_writing(new, args.force)
+    if written:
+        OUT.mkdir(parents=True, exist_ok=True)
+        for name, text in new.items():
+            (OUT / name).write_text(text)
 
     print(f"jobs: {len(chosen)} chosen from {sum(len(v) for v in pool.values())} usable")
     for reason, n in dropped.most_common():
@@ -255,7 +284,7 @@ def main():
     print(f"pairs: {len(pairs)} ({dict(Counter(p['role'] for p in pairs))})")
     print(f"  resume use: min {min(used.values())}, max {max(used.values())} | damaged: {sum(1 for p in pairs if p['damage'])}"
           f" | visa asked: {sum(p['visa'] for p in pairs)}")
-    print(f"written to {OUT}")
+    print(f"written to {OUT}" if written else f"unchanged, so nothing was written to {OUT}")
 
 
 if __name__ == "__main__":

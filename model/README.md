@@ -56,7 +56,7 @@ python3 model/build_pairs.py                                    # 1,000 jobs, 3 
 caffeinate -is model/.venv/bin/python model/label_pairs.py      # the teacher labels all 3,286 pairs (about 8 hours)
 ```
 
-`build_pairs.py` reads the job postings from `~/coding-projects/job-descriptions/<function>/jds/`. `label_pairs.py` labels the tailored pairs, then the cross pairs, then the rest. It can stop and restart at any point, and it skips pairs that already have a label in `model/private/labels/`. While it runs, it holds a lock that stops the training and grading scripts from loading a model beside it.
+`build_pairs.py` reads the job postings from `~/coding-projects/job-descriptions/<function>/jds/`. It refuses to run without the test jobs to check against, and refuses to rewrite pairs that already have labels (`--force` overrides). `label_pairs.py` labels the tailored pairs, then the cross pairs, then the rest. Every label records a stamp of the prompt it answered and the teacher that made it. `python3 model/label_pairs.py --stamp-existing` stamps labels written before stamps existed, and `--from <stamp>` moves labels from an old stamp definition. It can stop and restart at any point, and it skips pairs that already have a label in `model/private/labels/`. While it runs, it holds a lock that stops the training and grading scripts from loading a model beside it.
 
 ## Train and grade the student
 
@@ -74,5 +74,5 @@ model/.venv-train/bin/python model/student_eval.py --model model/private/student
 node eval/compare-versions.mjs --extra eval/private/student-run1 --extra-name student-run1
 ```
 
-Training runs over the 16-bit base, since the merged model is 16-bit (`--four-bit` trains over a 4-bit copy instead). `make_rows.py` stops if a pair file is missing or under 95% labeled. It also stops if no test jobs are there to audit against, or if a training resume shares text with the real test resume. `--check-reload` fails if the saved model answers differ from the trained one by more than 0.02 in any probability. `student_eval.py` writes only under `eval/private`, and refuses to mix results from two models in one folder (`--fresh` sets the old folder aside). Training and grading refuse to start while the teacher is labeling, because both need most of the Mac's memory.
+Training runs over the 16-bit base, since the merged model is 16-bit (`--four-bit` trains over a 4-bit copy instead). `make_rows.py` stops if a pair file is missing or under 95% labeled. It also stops if no test jobs are there to audit against, or if a training resume shares text with the real test resume. So do labels that don't carry today's prompt stamp, or that come from more than one teacher. Training refuses rows that don't match the manifest `make_rows.py` wrote with them. `--check-reload` fails if the saved model answers differ from the trained one by more than 0.02 in any probability. `student_eval.py` writes only under `eval/private`, and refuses to mix results from two models in one folder (`--fresh` sets the old folder aside). Training and grading refuse to start while the teacher is labeling, because both need most of the Mac's memory.
 

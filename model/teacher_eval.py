@@ -14,7 +14,6 @@ Everything runs on this Mac. No resume or job text leaves it.
 
 import argparse
 import json
-import subprocess
 import time
 from datetime import datetime, timezone
 from pathlib import Path
@@ -23,24 +22,14 @@ import mlx.core as mx
 from mlx_lm import load
 from mlx_lm.models.cache import make_prompt_cache
 
+from teacher_prompt import rubric  # the questions from scoring.js, shared with the label stamp
+
 ROOT = Path(__file__).resolve().parent.parent
 DEFAULT_MODEL = Path.home() / ".lmstudio/models/lmstudio-community/Qwen3.8-27B-MLX-4bit"
 LEVELS = ["Weak", "Moderate", "Strong"]
 CHUNK = 2048  # prompt tokens fed per step, to keep memory flat on long jobs
 SYSTEM = ("You score how well a candidate fits a job, using only the resume and the job description. "
           "Answer every question on its own. Reply only in the format asked for.")
-
-
-def rubric():
-    """The questions, dimensions and limits, exactly as scoring.js defines them."""
-    script = (
-        "import { buildQuestions, DIMENSIONS, FIT_CRITERIA, MAX_DESCRIPTION_CHARS } from './scoring.js';"
-        "console.log(JSON.stringify({ questions: buildQuestions({ needsSponsorship: true }),"
-        " labels: Object.fromEntries(Object.entries(DIMENSIONS).map(([k, d]) => [k, d.label])),"
-        " fitCriteria: FIT_CRITERIA, maxChars: MAX_DESCRIPTION_CHARS }));"
-    )
-    out = subprocess.run(["node", "--input-type=module", "-e", script], cwd=ROOT, capture_output=True, text=True, check=True)
-    return json.loads(out.stdout)
 
 
 def build_state(resume, job, max_chars):

@@ -121,11 +121,9 @@ A row for "the teacher is the ceiling" was considered and dropped. The teacher t
   - `test/private-paths.test.mjs` fails `npm test` if a private path is ever tracked or stops being ignored by the repo's own `.gitignore`.
   - The two resume checks share one contact rule and report unwritten or unknown ids. The cross pairs refuse a rewrite once they have labels.
   - The packager test pins that files under `model/private` can never ship.
-- To decide:
-  - fail closed in `build_pairs.py` when the test folder is missing
-  - refuse to rewrite `pairs.jsonl` while labels exist
-  - a stricter contact rule for links and phone numbers
-  - a prompt stamp on labels, backfilled for the labels written before it
+  - `build_pairs.py` refuses to run without test jobs, and refuses to rewrite pairs that have labels.
+  - The contact rule checks each link and phone number on its own.
+  - Every label carries a prompt stamp and its teacher. The rows script checks them against today's prompt, and training checks the rows against their manifest.
 - Changes to code the teacher imports land only between labeling runs.
 
 **Patterns to follow:** the `check(name, ok)` style in `test/*.test.mjs`, and `model/tests/test_pipeline.py` (standard library `unittest`) for Python.

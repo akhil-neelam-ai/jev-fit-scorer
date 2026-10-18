@@ -163,7 +163,6 @@ def prompt_for(p):
 
 BULLET = re.compile(r"^\s*[-•▪◦‣o]\s+")
 YEAR = re.compile(r"\b(19|20)\d\d\b")
-LINK_HOSTS = re.compile(r"(https?://|www\.|linkedin\.com|github\.com|behance\.net|dribbble\.com|medium\.com|substack\.com)", re.I)
 
 
 def name_line(text):
@@ -180,17 +179,63 @@ def within_band(words, target):
     return 85 * target <= 100 * words <= 115 * target
 
 
+# A link: anything after http:// or www., a domain followed by a path, or a known profile site.
+# A bare domain like Booking.com counts only on a line labeled as a website, since employers have names like that.
+LINK = re.compile(r"(?i)(?:https?://|www\.)[^\s|,;()<>]+"
+                  r"|\b(?:[a-z0-9-]+\.)+(?:com|net|org|io|dev|me|co|ai|app|edu|ly|us|uk|in|de|fr|br|ca|ng|sg|mx|cn|ke|ph)/[^\s|,;()<>]*"
+                  r"|\b(?:linkedin|github|behance|dribbble|medium|substack)\.(?:com|net)\b")
+SITE_LINE = re.compile(r"(?im)^\s*(?:portfolio|website|web|site|blog|homepage|url)\s*:.*$")
+DOMAIN = re.compile(r"(?i)\b(?:[a-z0-9-]+\.)+[a-z]{2,}\b")
+NOT_SITES = {"asp.net", "vb.net", "ado.net"}  # tech names that look like domains
+# A phone number in any country's style: digit groups joined by one space, dot or hyphen, or a plain run of digits.
+# "2019 - 2023" has a spaced hyphen, so it never matches. contact_issues decides which matches count.
+PHONE = re.compile(r"(?<!\w)(?:\+?\d{9,15}|\+?\(?\d{1,6}\)?(?:(?:[ .-]|(?<=\)))\(?\d{1,6}\)?){1,5})(?!\w)")
+
+
+def link_hosts(text):
+    """The site each link in the text points to, such as linkedin.com or example.com."""
+    found = [m.group(0) for m in LINK.finditer(text)]
+    found += [d for line in SITE_LINE.findall(text) for d in DOMAIN.findall(line.split(":", 1)[1])]
+    hosts = [re.sub(r"(?i)^(?:https?://)?(?:www\.)?", "", link).split("/")[0].lower().rstrip(".") for link in found]
+    return [h for h in hosts if h not in NOT_SITES]
+
+
+def phone_numbers(text):
+    """The phone numbers in the text. A number counts with 9 to 15 digits, or with 7 or 8 when it holds 555,
+    such as 555-0147. Date ranges, ZIP+4 codes and P.O. Box numbers look like phones, so they're skipped."""
+    found = []
+    for m in PHONE.finditer(text):
+        number, digits = m.group(0), re.sub(r"\D", "", m.group(0))
+        if not (9 <= len(digits) <= 15 or (len(digits) >= 7 and "555" in digits and len(digits) <= 15)):
+            continue
+        groups = re.findall(r"\d+", number)
+        dates = all(len(g) <= 2 or (len(g) == 4 and 1950 <= int(g) <= 2039) for g in groups)
+        if (dates and not re.search(r"[+(]", number)) or re.fullmatch(r"\d{5}-\d{4}", number):
+            continue
+        if re.search(r"(?i)\bbox\s*$", text[:m.start()]):
+            continue
+        found.append(number)
+    return found
+
+
 def contact_issues(text):
-    """The contact and format rules every written resume follows, generated or tailored."""
+    """The contact and format rules every written resume follows, generated or tailored.
+
+    Each link and each phone number is checked on its own. A line rule let a real LinkedIn
+    link pass when the same line held an example.com email.
+    """
     issues = []
     emails = re.findall(r"[\w.+-]+@([\w-]+(?:\.[\w-]+)+)", text)
     if not emails or any(d.lower() != "example.com" for d in emails):
         issues.append("email must be on example.com")
-    if "555" not in text:
-        issues.append("no 555 phone number")
-    hosts = [m.group(0) for m in LINK_HOSTS.finditer(text)]
-    if any("example.com" not in line for line in text.splitlines() if LINK_HOSTS.search(line)):
-        issues.append(f"links off example.com: {', '.join(sorted(set(hosts)))}")
+    phones = phone_numbers(text)
+    if not phones:
+        issues.append("no phone number")
+    elif any("555" not in re.sub(r"\D", "", p) for p in phones):
+        issues.append(f"phone number without 555: {', '.join(p for p in phones if '555' not in re.sub(r'[^0-9]', '', p))}")
+    off = sorted({h for h in link_hosts(text) if h != "example.com" and not h.endswith(".example.com")})
+    if off:
+        issues.append(f"links off example.com: {', '.join(off)}")
     if re.search(r"^\s*#|\*\*|^\s*\*\s", text, re.M):
         issues.append("markdown symbols")
     return issues
