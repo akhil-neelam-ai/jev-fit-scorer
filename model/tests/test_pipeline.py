@@ -726,6 +726,7 @@ class StudentSaves(unittest.TestCase):
         class DecisionTrainer:
             def __init__(self, args=None, **kwargs):
                 calls.append(("batch", args.per_device_train_batch_size, args.gradient_accumulation_steps))
+                calls.append(("cache cap", getattr(args, "cache_limit_gb", None)))
 
             def train(self, resume_from_checkpoint=None):
                 calls.append(("train",))
@@ -759,6 +760,7 @@ class StudentSaves(unittest.TestCase):
                          (train_student.LAYA, "multilingual", train_student.LAYA_REVISION, 8192, 7, False))
         self.assertEqual(self.saves(calls), [("merged", "merged-uncalibrated"), ("calibrate",), ("merged", "merged")])
         self.assertIn(("batch", 4, 8), calls)
+        self.assertIn(("cache cap", 4), calls)  # without it, a full run ran out of Metal buffers
         self.assertEqual((summary["kind"], summary["max_seq"], summary["seed"]), ("laya", 8192, 7))
         self.assertEqual(rows["kind"], "laya")  # what a later --resume checks
 
@@ -771,6 +773,7 @@ class StudentSaves(unittest.TestCase):
         self.assertEqual(self.saves(calls), [("adapters", "adapters-uncalibrated"), ("calibrate",),
                                              ("adapters", "adapters"), ("merged", "merged")])
         self.assertIn(("batch", 2, 4), calls)
+        self.assertIn(("cache cap", None), calls)  # a Clef run keeps the trainer's default
         self.assertEqual((summary["kind"], summary["load_in_4bit"], rows["kind"]), ("clef", False, "clef"))
         calls, summary, _ = self.run_main("--four-bit")
         self.assertEqual((calls[0][2]["load_in_4bit"], summary["load_in_4bit"]), (True, True))

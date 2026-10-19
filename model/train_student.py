@@ -177,29 +177,35 @@ def main():
             raise SystemExit(f"{report['skipped']} of {report.get('total')} {name} answers were skipped. Check the report above.")
 
     every = 10 if args.smoke else 100
+    training_args = TrainingArguments(
+        output_dir=str(out / "checkpoints"),
+        per_device_train_batch_size=settings["batch"],
+        gradient_accumulation_steps=settings["accumulation"],
+        warmup_steps=2 if args.smoke else 10,
+        num_train_epochs=args.epochs,
+        max_steps=args.steps or (20 if args.smoke else -1),
+        learning_rate=args.lr,
+        lr_scheduler_type="cosine",
+        weight_decay=0.01,
+        eval_strategy="steps" if args.smoke else "epoch",
+        eval_steps=every,
+        save_strategy="steps",
+        save_steps=every,
+        logging_steps=1 if args.smoke else 10,
+        seed=args.seed,
+        report_to="none",
+    )
+    if settings["kind"] == "laya":
+        # MLX keeps freed buffers by size for reuse, and without a cap the trainer lets that cache grow to peak
+        # memory. Laya's many short batches come in many lengths. The first full run hit Metal's limit of
+        # 499,000 buffers after about 270 steps. The MLX trainer reads this cap, which keeps the count far lower.
+        training_args.cache_limit_gb = 4
     trainer = DecisionTrainer(
         model=model,
         processing_class=tokenizer,
         train_dataset=train_items,
         eval_dataset=valid_items,
-        args=TrainingArguments(
-            output_dir=str(out / "checkpoints"),
-            per_device_train_batch_size=settings["batch"],
-            gradient_accumulation_steps=settings["accumulation"],
-            warmup_steps=2 if args.smoke else 10,
-            num_train_epochs=args.epochs,
-            max_steps=args.steps or (20 if args.smoke else -1),
-            learning_rate=args.lr,
-            lr_scheduler_type="cosine",
-            weight_decay=0.01,
-            eval_strategy="steps" if args.smoke else "epoch",
-            eval_steps=every,
-            save_strategy="steps",
-            save_steps=every,
-            logging_steps=1 if args.smoke else 10,
-            seed=args.seed,
-            report_to="none",
-        ),
+        args=training_args,
     )
     trainer.train(resume_from_checkpoint=True if args.resume else None)
     # Save the trained model before calibrating, and keep that copy, so the student can also be
