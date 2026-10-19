@@ -58,7 +58,7 @@ This is a learning project. The plan favors small, observable steps over product
 - **The text looks like the extension's.** Damage changes resume formatting but keeps the clean label. Most job descriptions are collapsed to one line, because every test job arrives that way from `extract.js`. Most rows also leave the company out, because `extract.js` finds one on few sites.
 - **Two layers of leak protection.** `build_pairs.py` chose the jobs. `make_rows.py` then runs a stricter audit, with decoded text, overlap measured against both postings, and every company and title spelling. Its audit drops anything that slipped through, without reshuffling the labeling run. A tailored resume goes wherever its source posting goes, into validation or out of every row.
 - **The Opus judge only measures.** Its answers never become labels or select data. That keeps Claude's output out of training targets.
-- **Trying it through a preload, locally only.** A script in `eval/` redirects the CLI's TypeSafe calls to the Unsloth app's `/v1/systemone` on 127.0.0.1. `eval/` never ships, and `scoring.js`, `manifest.json` and the store build stay untouched. Editing the endpoint constant, as the README's model-swap recipe does, would touch files in the pending 1.5.0 release.
+- **Trying it through a preload, locally only.** A script in `eval/` sends the CLI's one TypeSafe call to `model/serve_student.py`, which serves the merged student at `/v1/systemone` on 127.0.0.1. The Unsloth app was the first choice, but it serves Clef models only on NVIDIA or AMD GPUs. `eval/` never ships, and `scoring.js`, `manifest.json` and the store build stay untouched. Editing the endpoint constant, as the README's model-swap recipe does, would touch files in the pending 1.5.0 release.
 
 ---
 
@@ -81,7 +81,7 @@ flowchart TB
   TS --> M[Merged student]
   M --> SE[student_eval.py: 101 test jobs]
   SE --> CV[compare-versions.mjs: scoreboard against Lenny]
-  M --> ST[Unsloth app: local /v1/systemone]
+  M --> ST[serve_student.py: local /v1/systemone]
   ST --> CLI[cli.js with eval/local-endpoint.mjs]
 ```
 
@@ -265,26 +265,28 @@ A row for "the teacher is the ceiling" was considered and dropped. The teacher t
 **Dependencies:** U4
 
 **Files:**
-- Create: `eval/local-endpoint.mjs`
-- Modify: `model/README.md`, `model/LEARNING.md`
-- Test: `test/cli.test.mjs`
+- Create: `eval/local-endpoint.mjs`, `model/serve_student.py`, `model/serve_check.py`
+- Modify: `model/README.md`, `model/LEARNING.md`, `package.json`
+- Test: `test/local-endpoint.test.mjs`, `model/tests/test_pipeline.py`
 
 **Approach:**
-- The user, not the agent, sets up the Unsloth app:
-  - Keyless API access on, for the inference scope only.
-  - The app bound to 127.0.0.1 with LAN access off.
-  - The Decision API pointed at the merged folder in Settings, because an app launched from Finder doesn't inherit `UNSLOTH_SYSTEMONE_MODEL` from a shell.
-  - Keyless access turned off again afterward.
-- The preload redirects calls to `api.typesafe.ai` to `http://127.0.0.1:8888/v1/systemone`. It sets `TYPESAFE_API_KEY` to `no-key-required`, one of the placeholders the app accepts, so the real key is never read. It allows a longer timeout and retries once on a 503 while the model loads.
-- The preload throws unless the answer carries the app's `x-unsloth-decision-backend` header, which only a local checkpoint sets. That way a hosted model can't answer silently.
-- The first call uses a generated resume. Its fit and scorecard must match `student_eval.py`'s answer for the same state within 0.05. The real resume goes through only after both checks pass.
+- The Unsloth app was the first plan, and it can't serve the student on a Mac. It answers that Clef models need an NVIDIA or AMD GPU. So `model/serve_student.py` loads the merged model with `student_eval.py`'s loader and answers `/v1/systemone` on 127.0.0.1:8899. It answers only to the student's exact name, only when addressed as 127.0.0.1, and only to JSON bodies under 2 MB. A 200 answer carries the local-backend header, and no reply or log quotes the resume.
+- The preload sends the CLI's one scoring call there and names the student exactly. Inside the app, a default alias such as `jev-latest` can resolve to a hosted model. The header check only reads the answer, after the resume has gone. The preload sets `TYPESAFE_API_KEY` to `no-key-required`, so the real key is never read. It refuses any other request, redirects, a proxy setting and any address but 127.0.0.1. It retries a 503 while a model loads.
+- `model/serve_check.py` sends the run's `preview.json` rows, all generated resumes, and fails unless every probability comes back within 0.02 of the trained answers. A made-up resume then goes through the CLI. The real resume goes through only after both.
+- On an NVIDIA or AMD machine, the app can serve the student instead, through `LOCAL_DECISION_URL` and a `clef-ft:` name. That route is untested.
 
 **Test scenarios:**
-- With the preload and a stub server, `cli.js` sends the nine-question request to the local URL with `Bearer no-key-required`. The stub sees neither of two sentinel values planted in `TYPESAFE_API_KEY` and `~/.typesafe_api_key`.
+- With the preload and a stub server, `cli.js` sends the nine-question request to the local URL with `Bearer no-key-required`, naming the student exactly. The stub sees neither of two sentinel values planted in `TYPESAFE_API_KEY` and `~/.typesafe_api_key`.
 - A stub answer without the local-backend header makes the preload fail.
+- Look-alike hosts, `localhost`, `127.1`, a proxy setting and a default alias as the model name are refused before anything is sent. A redirect is refused, and its target sees nothing.
+- A 503 while the model loads is retried, and one that never ends becomes an error.
+- The student server listens on 127.0.0.1 only. It refuses another model name, another host name, a non-JSON body and an empty or oversized one, and none of them reach the model.
+- A model error's reply and log quote nothing from the request.
+- `serve_check.py` passes on matching answers, including a one-number visa answer. It fails on a drifted answer, an answer without the local-backend header, or nothing to compare.
+- The server, the preload and `serve_check.py` agree on the student's name and port.
 - Without the preload, `cli.js` still calls TypeSafe.
 
-**Verification:** One posting is scored end to end through the app on a generated resume. The answer satisfies `parseJevResponse` in `scoring.js`, and a lesson records the trial.
+**Verification:** `serve_check.py` passes against the running server. A made-up resume and then the real resume are scored end to end through the CLI. The CLI's report shows the answer, so `parseJevResponse` in `scoring.js` accepted it, and a lesson records the trial.
 
 ---
 
@@ -334,7 +336,7 @@ A row for "the teacher is the ceiling" was considered and dropped. The teacher t
 | The student learns "written for this posting" as fit | Cross pairs put each tailored resume against a different job |
 | Training text differs from test text | One-line job descriptions, decoded entities and URLs without query strings in rows |
 | The 101-job test is noisy around a 0.15 margin | A pass is confirmed with a second training seed before any shipping plan |
-| The resume reaches a hosted model during the CLI trial | The local-backend header check and a generated resume on the first call |
+| The resume reaches a hosted model during the CLI trial | The student's exact name in every request, a server that answers only to it on 127.0.0.1, and generated resumes before the real one |
 | Private data reaches git | `test/private-paths.test.mjs` in `npm test`, and aggregate numbers only in the docs |
 | Memory pressure | The teacher and the student never run at the same time |
 
@@ -347,7 +349,7 @@ These are bets made without the user's confirmation, while the user was asleep:
 - Two epochs over about 2,600 training rows is enough for a first student. That's what remains after the holdout and the filters. The smoke run's speed decides whether a full run fits in a night.
 - The teacher's harshness is mostly a steady offset that score mapping absorbs. It is larger in finance and partnerships, which one mapping can't fully absorb.
 - 143 tailored resumes and their cross pairs give enough 3s and 4s. U2's bar checks this.
-- The Unsloth app serves a merged Clef model through `/v1/systemone` with the answer shape `parseJevResponse` expects.
+- The Unsloth app serves a merged Clef model through `/v1/systemone` with the answer shape `parseJevResponse` expects. This was wrong on a Mac, where the app serves Clef models only on NVIDIA or AMD GPUs. `model/serve_student.py` took its place (U6).
 - A 6,144-token limit covers nearly all training prompts.
 
 ---

@@ -89,7 +89,7 @@ The other way is to take a plain small language model and add a fresh decision h
 
 The trainer can learn from the teacher's full probabilities, not just its top answer. If the teacher says "1: 58%, 0: 40%", the student learns that the case is close. This is called soft-label distillation. It matters here because the extension's scores are probability-weighted. The student needs the teacher's doubt as well as its pick.
 
-The app also serves decision models on a local endpoint that takes the same kind of request Jev does. Once the student is trained, we can point the extension at the Mac and try it in the real popup.
+The app also serves decision models on a local endpoint that takes the same kind of request Jev does. Once the student is trained, we can point the extension at the Mac and try it in the real popup. Lesson 18 corrects that, since the app can't serve a Clef model on a Mac.
 
 We'll train from a script in our own environment, with every version pinned, rather than inside the app's setup. The app updates itself. A pinned setup means a run next month repeats a run today.
 
@@ -225,6 +225,18 @@ Two worries didn't show up in the grade. Calibration made no difference, since t
 
 One good run can be luck, though. The plan's next step for this row is a second training run with a different seed. If it agrees, that's a result.
 
+## 18. Keep the resume on the Mac
+
+The Unsloth app wouldn't serve the student. Its error said Clef models need an NVIDIA or AMD GPU, and this Mac has neither. So the student got its own server, about 120 lines of Python. `serve_student.py` loads the merged model with the same code the grade uses. It answers at `/v1/systemone`, the same path as Jev's API, on 127.0.0.1. That address always means this computer.
+
+A code review caught a quieter problem in the first script. It asked the app for "jev-latest", the model name the CLI sends to TypeSafe. In the app, that name is an alias for whatever model is set as the default. The default can be a hosted model, TypeSafe's Jev included. The script did check every answer for a header that only a local model sets. But that check reads the answer, and by then the resume has already gone.
+
+So every request now names the student exactly, as `clef-ft:worth-applying-run1`. Our server answers only to that name. The app would look it up only among folders on this Mac. The script also never sends to "localhost". On a Mac, that name can mean the IPv6 address, where a different program could be listening. The script refuses redirects and proxies. It swaps the TypeSafe key for a placeholder, so the real key is never read.
+
+Next, the server had to show it answers like the model we trained. `serve_check.py` sends three validation rows, all with generated resumes. It compares the answers with the ones the model gave right after training. The largest change in any probability was 0.011, inside the 0.02 the reload check allows (lesson 14). The visa answer arrives as one number, the chance of yes, so the check splits it into yes and no first.
+
+A made-up resume went through the CLI next. Then the real resume did, against one of the 101 test jobs. Its fit, on the 0 to 4 scale, landed within 0.1 of the graded answer for that job. The main factor matched too. The CLI sends no page link, so its prompt differs a little from the graded one. The answer took about half a second, and the resume never left the Mac.
+
 ## Decisions so far
 
 | Decision | Why |
@@ -249,15 +261,20 @@ One good run can be luck, though. The plan's next step for this row is a second 
 | Train over the 16-bit base, not a 4-bit copy | The merged model is 16-bit. Adapters trained over 4-bit answered up to 0.13 differently once merged, and 16-bit ran no slower. |
 | Check each phone number and link in a resume on its own | A rule per line let a real LinkedIn link pass next to an example.com email. |
 | Stamp every label with a hash of the prompt it answered | Labels from two prompt versions would teach two questions at once. |
+| Serve the student from our own small server on the Mac | The Unsloth app serves Clef models only on NVIDIA or AMD GPUs. |
+| Name the student exactly in every request | In the app, "jev-latest" means the default model, which can be hosted. A check on the answer comes after the resume has gone. |
+| Check the server on generated resumes before the real one | A wrong or drifted model shows up before any private text is sent. |
 
 ## Words we've used
 
 | Word | Meaning |
 |---|---|
+| Alias | A short name that stands for whatever model is set as the default, such as "jev-latest" in the Unsloth app. |
 | Bootstrap | Resampling the test set many times to see how much a number moves by luck. |
 | Calibration curve | A mapping from a model's raw scores onto the scale you care about. |
 | Cross-validation | Fitting on part of the data, scoring on the rest, then rotating. |
 | Distillation | Training a small student to copy a large teacher's answers. |
+| Endpoint | The web address a program sends its requests to, such as Jev's `/v1/systemone`. |
 | Hash | A short fingerprint of some text. Change one character and the fingerprint changes. |
 | Leakage | Test data reaching the training set, which inflates the score. |
 | Mode collapse | A model's habit of giving the same few answers when you asked for variety. |
@@ -273,8 +290,7 @@ One good run can be luck, though. The plan's next step for this row is a second 
 
 ## Next
 
-The first student is trained and graded: 0.62 against Jev's 0.59, within the test's noise (lesson 17).
+The first student is trained and graded: 0.62 against Jev's 0.59, within the test's noise (lesson 17). It has also scored a real resume from the CLI, and the resume never left the Mac (lesson 18).
 
 1. Train a second student with a different seed, about 4.6 hours, to confirm the first wasn't luck.
-2. Try the student from the CLI through the Unsloth app's local endpoint.
-3. If both hold, plan how a local option could ship.
+2. If it agrees, plan how a local option could ship.

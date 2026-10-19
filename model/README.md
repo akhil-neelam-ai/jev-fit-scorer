@@ -86,5 +86,5 @@ python3 model/serve_check.py --run model/private/student/run1
 node --import ./eval/local-endpoint.mjs cli.js --resume resume.txt --job job.txt
 ```
 
-The preload sends the CLI's request to the server instead of TypeSafe, with a placeholder key, so the real key is never read. It names the student exactly, and the server answers only to that name. It also refuses redirects, proxies, any address but `127.0.0.1`, and any answer that didn't come from a local checkpoint. On an NVIDIA or AMD machine, the Unsloth app can serve the student instead. Clone the merged folder into `~/.unsloth/studio/outputs/`, pick it under Settings > API, and point `LOCAL_DECISION_URL` and `--url` at the app.
+The preload sends the CLI's request to the server instead of TypeSafe, with a placeholder key, so the real key is never read. It names the student exactly, and the server answers only to that name. It also refuses redirects, proxies, any address but `127.0.0.1`, and any answer that didn't come from a local checkpoint. On an NVIDIA or AMD machine, the Unsloth app can serve the student instead. Clone the merged folder into `~/.unsloth/studio/outputs/`, pick it under Settings > API, and point `LOCAL_DECISION_URL` and `--url` at the app. We haven't tested that route.
 
