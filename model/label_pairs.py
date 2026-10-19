@@ -67,7 +67,8 @@ def label_problems(labels, stamp, teacher=None):
     if unstamped:
         since = min(label.get("labeledAt", "") for label in unstamped)[:10]
         return (f"{len(unstamped)} labels have no prompt stamp. Check that the prompt hasn't changed since {since} with "
-                f"git log -p --since={since} -- scoring.js model/teacher_eval.py, then run python3 model/label_pairs.py --stamp-existing.")
+                f"git log -p --since={since} -- scoring.js model/teacher_eval.py. Also check git status and git diff for "
+                "edits not yet committed. Then run python3 model/label_pairs.py --stamp-existing.")
     others = Counter(label["prompt"] for label in labels if label["prompt"] != stamp)
     if others:
         old = others.most_common(1)[0][0]

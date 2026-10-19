@@ -9,7 +9,7 @@
     "node": ">=18"
   },
   "scripts": {
-    "test": "node test/display.test.mjs && node test/worker.test.mjs && node test/counts.test.mjs && node test/count-api.test.mjs && node test/errors.test.mjs && node test/cli.test.mjs && node test/manifest.test.mjs && node test/package.test.mjs && node test/private-paths.test.mjs",
+    "test": "node test/display.test.mjs && node test/worker.test.mjs && node test/counts.test.mjs && node test/count-api.test.mjs && node test/errors.test.mjs && node test/cli.test.mjs && node test/manifest.test.mjs && node test/package.test.mjs && node test/private-paths.test.mjs && node test/local-endpoint.test.mjs",
     "test:browser": "node test/browser.test.mjs && node test/extract.test.mjs && node test/popup.test.mjs && node test/welcome.test.mjs",
     "package": "node scripts/package.mjs",
     "test:model": "python3 -B -m unittest discover -s model/tests -t model/tests"

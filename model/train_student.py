@@ -77,6 +77,7 @@ def main():
                     help="train over a 4-bit base. Faster, but the 16-bit merged model then differs from the trained one")
     ap.add_argument("--base", default=BASE)
     ap.add_argument("--revision", default=BASE_REVISION)
+    ap.add_argument("--seed", type=int, default=3407, help="a second run with another seed checks that a result wasn't luck")
     args = ap.parse_args()
     refuse_if_labeling()
 
@@ -90,8 +91,13 @@ def main():
         raise SystemExit(f"No checkpoint to resume in {out / 'checkpoints'}.")
     # The rows are read and checked before the slow load, and a resumed run must see the same rows.
     train_rows, valid_rows, rows = read_rows(args.smoke)
-    if args.resume and (out / "rows.json").exists() and json.loads((out / "rows.json").read_text())["sha1"] != rows["sha1"]:
-        raise SystemExit(f"The rows changed since {out.name} started, so it can't resume. Start a new --name.")
+    rows["seed"] = args.seed
+    if args.resume and (out / "rows.json").exists():
+        started_with = json.loads((out / "rows.json").read_text())
+        if started_with["sha1"] != rows["sha1"]:
+            raise SystemExit(f"The rows changed since {out.name} started, so it can't resume. Start a new --name.")
+        if started_with.get("seed", 3407) != args.seed:
+            raise SystemExit(f"{out.name} started with --seed {started_with.get('seed', 3407)}. Resume it with that seed.")
     out.mkdir(parents=True, exist_ok=True)
     (out / "rows.json").write_text(json.dumps(rows, indent=2))
 
@@ -104,7 +110,7 @@ def main():
     model, tokenizer = FastDecisionModel.from_pretrained(args.base, revision=args.revision,
                                                          max_seq_length=args.max_seq, load_in_4bit=args.four_bit)
     model = FastDecisionModel.get_peft_model(model, r=16, lora_alpha=16, lora_dropout=0,
-                                             use_gradient_checkpointing="unsloth", random_state=3407)
+                                             use_gradient_checkpointing="unsloth", random_state=args.seed)
     train_items, train_report = FastDecisionModel.build_dataset(train_rows, tokenizer, model)
     valid_items, valid_report = FastDecisionModel.build_dataset(valid_rows, tokenizer, model)
     print(f"train items: {len(train_items)} {train_report}", flush=True)
@@ -136,7 +142,7 @@ def main():
             save_strategy="steps",
             save_steps=every,
             logging_steps=1 if args.smoke else 10,
-            seed=3407,
+            seed=args.seed,
             report_to="none",
         ),
     )
@@ -156,7 +162,7 @@ def main():
                for r in valid_rows[:3]]
     (out / "preview.json").write_text(json.dumps(preview, indent=1, default=str))
     (out / "summary.json").write_text(json.dumps({
-        "base": args.base, "revision": args.revision, "load_in_4bit": args.four_bit, "epochs": args.epochs,
+        "base": args.base, "revision": args.revision, "seed": args.seed, "load_in_4bit": args.four_bit, "epochs": args.epochs,
         "lr": args.lr, "max_seq": args.max_seq, "steps": args.steps, "train_items": len(train_items), "valid_items": len(valid_items),
         "rows": rows,
         "metrics": metrics, "temperatures": temperatures, "minutes": round((time.time() - started) / 60, 1),

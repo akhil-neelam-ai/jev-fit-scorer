@@ -76,3 +76,20 @@ node eval/compare-versions.mjs --extra eval/private/student-run1 --extra-name st
 
 Training runs over the 16-bit base, since the merged model is 16-bit (`--four-bit` trains over a 4-bit copy instead). `make_rows.py` stops if a pair file is missing or under 95% labeled. It also stops if no test jobs are there to audit against, or if a training resume shares text with the real test resume. So do labels that don't carry today's prompt stamp, or that come from more than one teacher. Training refuses rows that don't match the manifest `make_rows.py` wrote with them. `--check-reload` fails if the saved model answers differ from the trained one by more than 0.02 in any probability. `student_eval.py` writes only under `eval/private`, and refuses to mix results from two models in one folder (`--fresh` sets the old folder aside). Training and grading refuse to start while the teacher is labeling, because both need most of the Mac's memory.
 
+## Try the student from the CLI
+
+The Unsloth app serves models on this Mac at `/v1/systemone`, the same path as Jev's API. Clone the student into the app's outputs folder, which is instant on macOS:
+
+```bash
+cp -cR model/private/student/run1/merged ~/.unsloth/studio/outputs/worth-applying-run1
+```
+
+In the app, under Settings > API, turn on the Decision API and pick the model `clef-ft:worth-applying-run1`. Turn on keyless access with the Inference scope, and keep the server on `127.0.0.1`. Then check the app answers like the trained student, using only generated resumes, before scoring a real one:
+
+```bash
+python3 model/serve_check.py --run model/private/student/run1
+node --import ./eval/local-endpoint.mjs cli.js --resume resume.txt --job job.txt
+```
+
+The preload sends the CLI's request to the app instead of TypeSafe, with a placeholder key, so the real key is never read. It names the student exactly, so the app refuses the request unless the student is its configured model. It also refuses redirects, proxies and any answer that didn't come from a local checkpoint. Turn keyless access off again when you're done.
+

@@ -9,6 +9,7 @@ job, resume and label is made up in the test. Run from the repo root:
 import contextlib
 import fcntl
 import hashlib
+import http.server
 import io
 import json
 import re
@@ -16,6 +17,7 @@ import shutil
 import subprocess
 import sys
 import tempfile
+import threading
 import types
 import unittest
 from collections import defaultdict
@@ -31,6 +33,7 @@ import label_pairs  # noqa: E402
 import make_resumes  # noqa: E402
 import make_rows  # noqa: E402
 import make_tailored  # noqa: E402
+import serve_check  # noqa: E402
 import student_eval  # noqa: E402
 import teacher_prompt  # noqa: E402
 import train_student  # noqa: E402
@@ -444,6 +447,111 @@ class RowFiles(unittest.TestCase):
             with self.assertRaises(SystemExit) as stop:
                 train_student.read_rows(rows_dir=Path(tmp))
             self.assertIn("make_rows.py", str(stop.exception.code))
+
+
+class ServeCheck(unittest.TestCase):
+    """serve_check gates the first real resume, so it runs against a fake app that answers in the real app's shapes."""
+
+    PREVIEW = [{"id": "v1", "state": "made-up state", "questions": {"fit": {}, "visa": {}},
+                "answers": {"fit": {"probabilities": {"0": 0.2, "1": 0.8}}, "visa": {"probabilities": {"true": 0.3, "false": 0.7}}}}]
+    WIRE = {"fit": {"type": "score", "score": 0.8, "confidence": 0.8, "probabilities": {"0": 0.2, "1": 0.8}},
+            "visa": {"type": "noul", "noul": 0.3}}  # the app sends a yes-or-no answer as one number
+
+    def setUp(self):
+        self.tmp = Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, self.tmp)
+        (self.tmp / "preview.json").write_text(json.dumps(self.PREVIEW))
+        for patch in (mock.patch.object(serve_check, "WAIT_S", 1), mock.patch.object(serve_check, "RETRY_S", 0.05)):
+            patch.start()
+            self.addCleanup(patch.stop)
+
+    def app(self, replies):
+        """A fake app on 127.0.0.1. Each request gets the next (status, local header, answers) in `replies`."""
+        seen = []
+
+        class Handler(http.server.BaseHTTPRequestHandler):
+            def do_POST(self):
+                seen.append(json.loads(self.rfile.read(int(self.headers["Content-Length"]))))
+                status, local, answers = replies[min(len(seen) - 1, len(replies) - 1)]
+                payload = json.dumps({"answers": answers}).encode()
+                self.send_response(status)
+                if local:
+                    self.send_header("x-unsloth-decision-backend", "mlx")
+                self.send_header("Content-Type", "application/json")
+                self.send_header("Content-Length", str(len(payload)))
+                self.end_headers()
+                self.wfile.write(payload)
+
+            def log_message(self, *args):
+                pass
+
+        server = http.server.ThreadingHTTPServer(("127.0.0.1", 0), Handler)
+        threading.Thread(target=server.serve_forever, daemon=True).start()
+        self.addCleanup(server.server_close)
+        self.addCleanup(server.shutdown)
+        return f"http://127.0.0.1:{server.server_port}/v1/systemone", server.server_port, seen
+
+    def check(self, *argv):
+        with mock.patch.object(sys, "argv", ["serve_check.py", "--run", str(self.tmp), *argv]), \
+                contextlib.redirect_stdout(io.StringIO()), self.assertRaises(SystemExit) as stop:
+            serve_check.main()
+        return stop.exception.code
+
+    def test_matching_answers_pass_and_name_the_student(self):
+        url, _, seen = self.app([(200, True, self.WIRE)])
+        self.assertEqual(self.check("--url", url), 0)
+        self.assertEqual(seen[0]["model"], "clef-ft:worth-applying-run1")
+
+    def test_a_drifted_answer_fails(self):
+        url, _, _ = self.app([(200, True, {**self.WIRE, "fit": {**self.WIRE["fit"], "probabilities": {"0": 0.25, "1": 0.75}}})])
+        self.assertEqual(self.check("--url", url), 1)
+
+    def test_an_answer_from_anywhere_else_is_refused(self):
+        url, _, _ = self.app([(200, False, self.WIRE)])
+        self.assertIn("local checkpoint", self.check("--url", url))
+
+    def test_a_loading_model_is_waited_for_and_errors_are_named(self):
+        url, _, seen = self.app([(503, True, {}), (200, True, self.WIRE)])
+        self.assertEqual(self.check("--url", url), 0)
+        self.assertEqual(len(seen), 2)
+        url, _, _ = self.app([(500, True, {})])
+        self.assertIn("answered 500", self.check("--url", url))
+        self.assertIn("No app answered", self.check("--url", "http://127.0.0.1:9/v1/systemone"))
+
+    def test_only_this_mac_and_a_local_model_name(self):
+        url, port, seen = self.app([(200, True, self.WIRE)])
+        for bad in ("http://example.invalid/v1/systemone", "http://localhost.evil.invalid/v1/systemone",
+                    "http://127.0.0.1@evil.invalid/v1/systemone", f"http://127.1:{port}/v1/systemone"):
+            self.assertIn("must be on this Mac", self.check("--url", bad), bad)
+        self.assertIn("must name a local model", self.check("--url", url, "--model", "jev-latest"))
+        self.assertEqual(seen, [], "nothing was sent, though the 127.1 address reaches the fake app")
+
+    def test_an_empty_comparison_fails(self):
+        (self.tmp / "preview.json").write_text(json.dumps([{**self.PREVIEW[0], "answers": {}}]))
+        url, _, _ = self.app([(200, True, self.WIRE)])
+        self.assertIn("Nothing was compared", self.check("--url", url))
+
+
+class ResumedRuns(unittest.TestCase):
+    def test_a_resumed_run_keeps_its_seed_and_its_rows(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            rows_dir, out = Path(tmp) / "rows", Path(tmp) / "student"
+            rows_dir.mkdir()
+            with mock.patch.object(make_rows, "OUT", rows_dir):
+                make_rows.write_rows({"train": [{"id": "t"}], "valid": [{"id": "v"}]}, {"prompt": CURRENT_STAMP})
+            (out / "runx/checkpoints/checkpoint-1").mkdir(parents=True)
+            _, _, rows = train_student.read_rows(rows_dir=rows_dir)
+            (out / "runx/rows.json").write_text(json.dumps({**rows, "seed": 3407}))
+            with mock.patch.object(train_student, "ROWS", rows_dir), mock.patch.object(train_student, "OUT", out), \
+                    mock.patch.object(label_pairs, "LOCK", Path(tmp) / "no.lock"):
+                for argv, hint in ((["--seed", "99"], "--seed 3407"), ([], None)):
+                    if hint is None:  # the same seed, but rows that changed since the run started
+                        (out / "runx/rows.json").write_text(json.dumps({**rows, "sha1": {"train": "x", "valid": "y"}}))
+                        hint = "rows changed"
+                    with mock.patch.object(sys, "argv", ["train_student.py", "--name", "runx", "--resume", *argv]), \
+                            self.assertRaises(SystemExit) as stop:
+                        train_student.main()
+                    self.assertIn(hint, str(stop.exception.code))
 
 
 class StudentResults(unittest.TestCase):

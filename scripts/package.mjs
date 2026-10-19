@@ -40,7 +40,7 @@ export const ALLOWLIST = [
 
 // A second guard: nothing matching these may ship, even if someone adds it to the list above.
 export const FORBIDDEN = [
-  /^eval\//, /^site\//, /^test\//, /^scripts\//, /^dist\//, /^node_modules\//,
+  /^eval\//, /^site\//, /^test\//, /^scripts\//, /^dist\//, /^node_modules\//, /^model\//,
   /(^|\/)\./, // dotfiles and dot folders such as .git, .env and .vercel
   /resume/i, /private/i, /\.(md|zip|mjs|txt|log)$/i, /^cli\.js$/, /^package(-lock)?\.json$/
 ];
