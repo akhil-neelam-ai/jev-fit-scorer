@@ -150,6 +150,11 @@ try {
   check("a default alias as the model name is refused", r.code !== 0 && r.err.includes("isn't a local model name") &&
     fake.seen.length === 0, r.err.trim().split("\n")[0]);
 
+  r = await cli(fake.url, { extra: { LOCAL_DECISION_MODEL: "laya-ft:worth-applying-laya1" } });
+  check("a Laya run's name goes through as given", r.code === 0 && fake.seen.length === 1 &&
+    JSON.parse(fake.seen[0].body).model === "laya-ft:worth-applying-laya1", r.err.trim().split("\n")[0]);
+  fake.seen.length = 0;
+
   r = await cli(fake.url, { extra: { NODE_USE_ENV_PROXY: "1" } });
   check("a proxy setting for fetch is refused", r.code !== 0 && r.err.includes("proxy") && fake.seen.length === 0,
     r.err.trim().split("\n")[0]);

@@ -528,6 +528,8 @@ class ServeCheck(unittest.TestCase):
             self.assertIn("must be on this Mac", self.check("--url", bad), bad)
         self.assertIn("must name a local model", self.check("--url", url, "--model", "jev-latest"))
         self.assertEqual(seen, [], "nothing was sent, though the 127.1 address reaches the fake app")
+        self.assertEqual(self.check("--url", url, "--model", "laya-ft:worth-applying-laya1"), 0)  # a Laya run's name
+        self.assertEqual(seen[-1]["model"], "laya-ft:worth-applying-laya1")
 
     def test_an_empty_comparison_fails(self):
         (self.tmp / "preview.json").write_text(json.dumps([{**self.PREVIEW[0], "answers": {}}]))
@@ -743,30 +745,35 @@ class StudentSaves(unittest.TestCase):
                     mock.patch.object(sys, "argv", ["train_student.py", "--name", "runx", *argv]), \
                     contextlib.redirect_stdout(io.StringIO()):
                 train_student.main()
-            return calls, json.loads((out / "runx/summary.json").read_text())
+            return calls, json.loads((out / "runx/summary.json").read_text()), json.loads((out / "runx/rows.json").read_text())
 
     @staticmethod
     def saves(calls):
         return [call for call in calls if call[0] in ("adapters", "merged", "calibrate")]
 
     def test_a_laya_run_loads_the_pinned_checkpoint_and_saves_merged_copies(self):
-        calls, summary = self.run_main("--laya", "--seed", "7", laya=True)
+        calls, summary, rows = self.run_main("--laya", "--seed", "7", laya=True)
         _, base, kwargs = calls[0]
-        self.assertEqual((base, kwargs["subfolder"], kwargs["revision"], kwargs["max_seq_length"], kwargs["random_state"]),
-                         (train_student.LAYA, "multilingual", train_student.LAYA_REVISION, 8192, 7))
+        self.assertEqual((base, kwargs["subfolder"], kwargs["revision"], kwargs["max_seq_length"], kwargs["random_state"],
+                          kwargs["load_in_4bit"]),
+                         (train_student.LAYA, "multilingual", train_student.LAYA_REVISION, 8192, 7, False))
         self.assertEqual(self.saves(calls), [("merged", "merged-uncalibrated"), ("calibrate",), ("merged", "merged")])
         self.assertIn(("batch", 4, 8), calls)
         self.assertEqual((summary["kind"], summary["max_seq"], summary["seed"]), ("laya", 8192, 7))
+        self.assertEqual(rows["kind"], "laya")  # what a later --resume checks
 
     def test_a_clef_run_saves_as_before_and_seeds_its_head(self):
-        calls, summary = self.run_main("--seed", "7")
+        calls, summary, rows = self.run_main("--seed", "7")
         _, base, kwargs = calls[0]
-        self.assertEqual((base, kwargs["revision"], kwargs["max_seq_length"], kwargs["random_state"]),
-                         (train_student.BASE, train_student.BASE_REVISION, 6144, 7))
+        self.assertEqual((base, kwargs["subfolder"], kwargs["revision"], kwargs["max_seq_length"], kwargs["random_state"],
+                          kwargs["load_in_4bit"]),
+                         (train_student.BASE, None, train_student.BASE_REVISION, 6144, 7, False))
         self.assertEqual(self.saves(calls), [("adapters", "adapters-uncalibrated"), ("calibrate",),
                                              ("adapters", "adapters"), ("merged", "merged")])
         self.assertIn(("batch", 2, 4), calls)
-        self.assertEqual(summary["kind"], "clef")
+        self.assertEqual((summary["kind"], summary["load_in_4bit"], rows["kind"]), ("clef", False, "clef"))
+        calls, summary, _ = self.run_main("--four-bit")
+        self.assertEqual((calls[0][2]["load_in_4bit"], summary["load_in_4bit"]), (True, True))
 
     def test_a_laya_checkpoint_run_as_a_clef_stops_before_training(self):
         calls = []
@@ -803,8 +810,14 @@ class ModelSettings(unittest.TestCase):
         self.assertEqual((settings["kind"], settings["base"], settings["revision"], settings["max_seq"],
                           settings["batch"], settings["accumulation"]),
                          ("clef", train_student.BASE, train_student.BASE_REVISION, 6144, 2, 4))
-        # Another base never borrows the default base's pinned commit.
+        # Another base never borrows the default base's pinned commit, but takes one given with it.
         self.assertIsNone(train_student.model_settings(self.args(base="other/model"))["revision"])
+        self.assertEqual(train_student.model_settings(self.args(base="other/model", revision="abc"))["revision"], "abc")
+
+    def test_max_seq_overrides_up_to_the_encoder_limit(self):
+        self.assertEqual(train_student.model_settings(self.args(max_seq=4096))["max_seq"], 4096)
+        self.assertEqual(train_student.model_settings(self.args(laya=True, max_seq=4096))["max_seq"], 4096)
+        self.assertEqual(train_student.model_settings(self.args(laya=True, max_seq=8192))["max_seq"], 8192)
 
     def test_each_kind_has_its_own_smoke_folder(self):
         self.assertEqual(train_student.run_folder(self.args(smoke=True), "laya").name, "smoke-laya")
