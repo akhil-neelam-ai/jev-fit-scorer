@@ -20,6 +20,8 @@ import tempfile
 import threading
 import types
 import unittest
+import urllib.error
+import urllib.request
 from collections import defaultdict
 from pathlib import Path
 from unittest import mock
@@ -516,12 +518,13 @@ class ServeCheck(unittest.TestCase):
         self.assertEqual(len(seen), 2)
         url, _, _ = self.app([(500, True, {})])
         self.assertIn("answered 500", self.check("--url", url))
-        self.assertIn("No app answered", self.check("--url", "http://127.0.0.1:9/v1/systemone"))
+        self.assertIn("Start model/serve_student.py", self.check("--url", "http://127.0.0.1:9/v1/systemone"))
 
     def test_only_this_mac_and_a_local_model_name(self):
         url, port, seen = self.app([(200, True, self.WIRE)])
         for bad in ("http://example.invalid/v1/systemone", "http://localhost.evil.invalid/v1/systemone",
-                    "http://127.0.0.1@evil.invalid/v1/systemone", f"http://127.1:{port}/v1/systemone"):
+                    "http://127.0.0.1@evil.invalid/v1/systemone", f"http://localhost:{port}/v1/systemone",
+                    f"http://127.1:{port}/v1/systemone"):
             self.assertIn("must be on this Mac", self.check("--url", bad), bad)
         self.assertIn("must name a local model", self.check("--url", url, "--model", "jev-latest"))
         self.assertEqual(seen, [], "nothing was sent, though the 127.1 address reaches the fake app")
@@ -530,6 +533,103 @@ class ServeCheck(unittest.TestCase):
         (self.tmp / "preview.json").write_text(json.dumps([{**self.PREVIEW[0], "answers": {}}]))
         url, _, _ = self.app([(200, True, self.WIRE)])
         self.assertIn("Nothing was compared", self.check("--url", url))
+
+
+class StudentServer(unittest.TestCase):
+    """serve_student answers the CLI's request with a fake model shaped like predict's output, so no MLX loads."""
+
+    ANSWERS = {"fit": {"type": "score", "score": 2.0, "confidence": 0.5, "legend": {"0": "No fit", "4": "Strong fit"},
+                       "probabilities": {"0": 0.5, "4": 0.5}, "answer": 0},
+               "visa": {"type": "noul", "noul": 0.3, "probabilities": {"true": 0.3, "false": 0.7}, "answer": False}}
+
+    def setUp(self):
+        import serve_student
+        self.serve_student, self.calls, self.mode = serve_student, [], "ok"
+
+        def answer(state, questions):
+            self.calls.append(state)
+            if self.mode == "bad":
+                raise ValueError("unreadable request")
+            if self.mode == "crash":
+                raise RuntimeError(f"broke while reading {state}")
+            return self.ANSWERS, 42
+
+        self.server = serve_student.serve("clef-ft:student", answer, 0)
+        threading.Thread(target=self.server.serve_forever, daemon=True).start()
+        self.addCleanup(self.server.server_close)
+        self.addCleanup(self.server.shutdown)
+        self.url = f"http://127.0.0.1:{self.server.server_port}"
+
+    def post(self, path, payload, headers=None):
+        """(status, headers, JSON body) for one request, sent with exactly these headers."""
+        import http.client
+        conn = http.client.HTTPConnection("127.0.0.1", self.server.server_port, timeout=5)
+        body = payload if isinstance(payload, bytes) else json.dumps(payload).encode()
+        sent = {"Host": f"127.0.0.1:{self.server.server_port}", "Content-Type": "application/json",
+                "Content-Length": str(len(body)), **(headers or {})}
+        conn.putrequest("POST", path, skip_host=True, skip_accept_encoding=True)
+        for name, value in sent.items():
+            conn.putheader(name, value)
+        conn.endheaders(body)
+        res = conn.getresponse()
+        reply = (res.status, dict(res.getheaders()), json.loads(res.read() or b"{}"))
+        conn.close()
+        return reply
+
+    def good(self, model="clef-ft:student"):
+        return {"state": "s", "model": model, "questions": {"fit": {}, "visa": {}}}
+
+    def test_it_listens_on_this_mac_only(self):
+        self.assertEqual(self.server.server_address[0], "127.0.0.1")
+
+    def test_it_answers_the_student_by_name_only(self):
+        status, headers, body = self.post("/v1/systemone", self.good())
+        self.assertEqual((status, headers.get("x-unsloth-decision-backend")), (200, "mlx"))
+        self.assertEqual((body["answers"]["fit"]["score"], body["usage"]["input_tokens"]), (2.0, 42))
+        for model in ("jev-latest", None):
+            status, headers, _ = self.post("/v1/systemone", self.good(model))
+            self.assertEqual(status, 400, model)
+            self.assertNotIn("x-unsloth-decision-backend", headers)
+        self.assertEqual(self.post("/v1/other", self.good())[0], 404)
+        self.assertEqual(self.post("/v1/systemone", {"model": "clef-ft:student"})[0], 400)
+        self.assertEqual(self.calls, ["s"], "only the one good request reached the model")
+
+    def test_it_refuses_what_a_browser_or_another_host_would_send(self):
+        self.assertEqual(self.post("/v1/systemone", self.good(), {"Content-Type": "text/plain"})[0], 415)
+        self.assertEqual(self.post("/v1/systemone", self.good(), {"Host": "evil.example:8899"})[0], 400)
+        self.assertEqual(self.post("/v1/systemone", self.good(), {"Host": "localhost"})[0], 400)
+        self.assertEqual(self.post("/v1/systemone", b"{}", {"Content-Length": str(self.serve_student.MAX_BODY + 1)})[0], 413)
+        self.assertEqual(self.post("/v1/systemone", b"", {"Content-Length": "0"})[0], 413)
+        self.assertEqual(self.calls, [], "none of them reached the model")
+
+    def test_model_errors_get_a_reply_that_quotes_nothing(self):
+        printed = io.StringIO()
+        with contextlib.redirect_stdout(printed):
+            self.mode = "bad"
+            self.assertEqual(self.post("/v1/systemone", self.good())[0], 400)
+            self.mode = "crash"
+            status, headers, body = self.post("/v1/systemone", {**self.good(), "state": "RESUME-MARKER-77"})
+        self.assertEqual(status, 500)
+        self.assertNotIn("x-unsloth-decision-backend", headers)
+        self.assertNotIn("RESUME-MARKER-77", json.dumps(body) + printed.getvalue())
+
+    def test_its_answers_pass_the_serve_check(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            (Path(tmp) / "preview.json").write_text(json.dumps([{**self.good(), "id": "v1", "answers": self.ANSWERS}]))
+            with mock.patch.object(sys, "argv", ["serve_check.py", "--run", tmp, "--url", self.url + "/v1/systemone",
+                                                 "--model", "clef-ft:student"]), \
+                    contextlib.redirect_stdout(io.StringIO()), self.assertRaises(SystemExit) as stop:
+                serve_check.main()
+        self.assertEqual(stop.exception.code, 0)
+
+    def test_the_server_and_both_clients_agree_on_names_and_ports(self):
+        preload = (ROOT / "eval/local-endpoint.mjs").read_text()
+        url = re.search(r'LOCAL_DECISION_URL \|\| "([^"]+)"', preload).group(1)
+        model = re.search(r'LOCAL_DECISION_MODEL \|\| "([^"]+)"', preload).group(1)
+        name = self.serve_student.default_name(Path("model/private/student/run1/merged"))
+        self.assertEqual((name, serve_check.MODEL), (model, model))
+        local = f"http://127.0.0.1:{self.serve_student.PORT}/v1/systemone"
+        self.assertEqual((serve_check.LOCAL, url), (local, local))
 
 
 class ResumedRuns(unittest.TestCase):

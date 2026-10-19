@@ -1,10 +1,10 @@
-"""Check that the Unsloth app serves the trained student, before any real resume goes to it.
+"""Check that the local server answers like the trained student, before any real resume goes to it.
 
 A run's preview.json holds a few validation rows, all generated resumes, with the
-answers the trained model gave in memory. This sends each one to the app's
-/v1/systemone on this Mac, naming the student exactly, the way
-eval/local-endpoint.mjs does. It fails unless every answer came from a local
-checkpoint and every probability comes back within 0.02 of the trained model's.
+answers the trained model gave in memory. This sends each one to /v1/systemone on
+this Mac, naming the student exactly, the way eval/local-endpoint.mjs does. That is
+model/serve_student.py by default, or the Unsloth app with --url. It fails unless every
+answer came from a local checkpoint and every probability comes back within 0.02.
 
   python3 model/serve_check.py --run model/private/student/run1
 """
@@ -19,7 +19,7 @@ from pathlib import Path
 
 from student_eval import RELOAD_TOLERANCE, largest_change
 
-LOCAL = "http://127.0.0.1:8888/v1/systemone"
+LOCAL = "http://127.0.0.1:8899/v1/systemone"
 MODEL = "clef-ft:worth-applying-run1"
 WAIT_S, RETRY_S = 300, 5  # the app answers 503 while a model loads
 
@@ -49,7 +49,7 @@ def ask(url, model, state, questions):
         try:
             with OPENER.open(request, timeout=120) as res:
                 if not res.headers.get("x-unsloth-decision-backend"):
-                    raise SystemExit("The answer didn't come from a local checkpoint. Check the app's decision model setting.")
+                    raise SystemExit("The answer didn't come from a local checkpoint, so it was refused.")
                 return {name: with_probabilities(a) for name, a in json.load(res)["answers"].items()}
         except urllib.error.HTTPError as e:
             body = e.read().decode()[:300]
@@ -59,7 +59,8 @@ def ask(url, model, state, questions):
                 continue
             raise SystemExit(f"The app answered {e.code}: {body}")
         except urllib.error.URLError as e:
-            raise SystemExit(f"No app answered at {url} ({e.reason}). Is the Unsloth app open, with the Decision API on?")
+            raise SystemExit(f"Nothing answered at {url} ({e.reason}). Start model/serve_student.py and wait for its "
+                             "serving line, or pass --url for the Unsloth app.")
 
 
 def main():
@@ -68,8 +69,9 @@ def main():
     ap.add_argument("--url", default=LOCAL)
     ap.add_argument("--model", default=MODEL, help="the student's name in the app, such as clef-ft:<folder>")
     args = ap.parse_args()
-    if not re.match(r"http://(127\.0\.0\.1|localhost)(:\d+)?/", args.url):
-        raise SystemExit("--url must be on this Mac.")
+    # 127.0.0.1 only: on macOS, localhost can mean IPv6, where another process could be listening.
+    if not re.match(r"http://127\.0\.0\.1(:\d+)?/", args.url):
+        raise SystemExit("--url must be on this Mac, at 127.0.0.1.")
     if not re.fullmatch(r"((clef|laya)-ft:[\w.-]+|laya-local)", args.model):
         raise SystemExit("--model must name a local model. A default alias could point at a hosted one.")
     preview = json.loads((Path(args.run) / "preview.json").read_text())
@@ -82,7 +84,7 @@ def main():
         compared += sum(len(a["probabilities"]) for a in item["answers"].values())
     if not compared:
         raise SystemExit("Nothing was compared. Check preview.json.")
-    print(f"largest probability change, app against the trained model: {worst:.4f} over {len(preview)} rows", flush=True)
+    print(f"largest probability change, served against trained: {worst:.4f} over {len(preview)} rows", flush=True)
     raise SystemExit(0 if worst < RELOAD_TOLERANCE else 1)
 
 

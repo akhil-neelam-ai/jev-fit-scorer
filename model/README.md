@@ -78,18 +78,13 @@ Training runs over the 16-bit base, since the merged model is 16-bit (`--four-bi
 
 ## Try the student from the CLI
 
-The Unsloth app serves models on this Mac at `/v1/systemone`, the same path as Jev's API. Clone the student into the app's outputs folder, which is instant on macOS:
+The Unsloth app serves Clef models only on NVIDIA or AMD GPUs, so on a Mac the student gets its own small server. It answers at `/v1/systemone` on `127.0.0.1`, the same path as Jev's API. Start it, wait for its "serving" line, then check it answers like the trained student, using only generated resumes, before scoring a real one:
 
 ```bash
-cp -cR model/private/student/run1/merged ~/.unsloth/studio/outputs/worth-applying-run1
-```
-
-In the app, under Settings > API, turn on the Decision API and pick the model `clef-ft:worth-applying-run1`. Turn on keyless access with the Inference scope, and keep the server on `127.0.0.1`. Then check the app answers like the trained student, using only generated resumes, before scoring a real one:
-
-```bash
+model/.venv-train/bin/python model/serve_student.py --model model/private/student/run1/merged
 python3 model/serve_check.py --run model/private/student/run1
 node --import ./eval/local-endpoint.mjs cli.js --resume resume.txt --job job.txt
 ```
 
-The preload sends the CLI's request to the app instead of TypeSafe, with a placeholder key, so the real key is never read. It names the student exactly, so the app refuses the request unless the student is its configured model. It also refuses redirects, proxies and any answer that didn't come from a local checkpoint. Turn keyless access off again when you're done.
+The preload sends the CLI's request to the server instead of TypeSafe, with a placeholder key, so the real key is never read. It names the student exactly, and the server answers only to that name. It also refuses redirects, proxies, any address but `127.0.0.1`, and any answer that didn't come from a local checkpoint. On an NVIDIA or AMD machine, the Unsloth app can serve the student instead. Clone the merged folder into `~/.unsloth/studio/outputs/`, pick it under Settings > API, and point `LOCAL_DECISION_URL` and `--url` at the app.
 

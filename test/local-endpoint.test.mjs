@@ -133,11 +133,18 @@ try {
   fake = await app([{}]);
   for (const url of ["http://example.invalid/v1/systemone", "http://localhost.evil.invalid/v1/systemone",
     "http://127.0.0.1.evil.invalid/v1/systemone", "http://127.0.0.1@evil.invalid/v1/systemone",
-    "https://127.0.0.1/v1/systemone", `http://127.1:${fake.port}/v1/systemone`]) {
+    "https://127.0.0.1/v1/systemone", `http://localhost:${fake.port}/v1/systemone`, `http://127.1:${fake.port}/v1/systemone`]) {
     r = await cli(url);
-    check(`${url} is refused before anything is sent`, r.code !== 0 && r.err.includes("isn't on this Mac"), r.err.trim().split("\n")[0]);
+    check(`${url} is refused before anything is sent`, r.code !== 0 && r.err.includes("isn't 127.0.0.1 on this Mac"),
+      r.err.trim().split("\n")[0]);
   }
-  check("none of those reached the fake app, though the last one could have", fake.seen.length === 0, `${fake.seen.length} requests`);
+  check("none of those reached the fake app, though the last two could have", fake.seen.length === 0, `${fake.seen.length} requests`);
+
+  const gone = await app([{}]);
+  gone.close(); // a port nothing listens on any more
+  r = await cli(gone.url);
+  check("with no server running, it says to start one", r.code !== 0 && r.err.includes("Start model/serve_student.py"),
+    r.err.trim().split("\n")[0]);
 
   r = await cli(fake.url, { extra: { LOCAL_DECISION_MODEL: "jev-latest" } });
   check("a default alias as the model name is refused", r.code !== 0 && r.err.includes("isn't a local model name") &&
