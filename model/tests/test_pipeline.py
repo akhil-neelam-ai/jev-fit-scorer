@@ -622,11 +622,21 @@ class StudentServer(unittest.TestCase):
                 serve_check.main()
         self.assertEqual(stop.exception.code, 0)
 
+    def test_a_laya_checkpoint_answers_to_a_laya_name(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            merged = Path(tmp) / "laya1" / "merged"
+            merged.mkdir(parents=True)
+            self.assertEqual(self.serve_student.default_name(merged), "clef-ft:worth-applying-laya1")
+            (merged / "rl_agent_config.json").write_text("{}")
+            self.assertEqual(self.serve_student.default_name(merged), "laya-ft:worth-applying-laya1")
+
     def test_the_server_and_both_clients_agree_on_names_and_ports(self):
         preload = (ROOT / "eval/local-endpoint.mjs").read_text()
         url = re.search(r'LOCAL_DECISION_URL \|\| "([^"]+)"', preload).group(1)
         model = re.search(r'LOCAL_DECISION_MODEL \|\| "([^"]+)"', preload).group(1)
-        name = self.serve_student.default_name(Path("model/private/student/run1/merged"))
+        with tempfile.TemporaryDirectory() as tmp:  # a stand-in run folder, so nothing here looks in model/private
+            (Path(tmp) / "run1/merged").mkdir(parents=True)
+            name = self.serve_student.default_name(Path(tmp) / "run1/merged")
         self.assertEqual((name, serve_check.MODEL), (model, model))
         local = f"http://127.0.0.1:{self.serve_student.PORT}/v1/systemone"
         self.assertEqual((serve_check.LOCAL, url), (local, local))
@@ -652,6 +662,154 @@ class ResumedRuns(unittest.TestCase):
                             self.assertRaises(SystemExit) as stop:
                         train_student.main()
                     self.assertIn(hint, str(stop.exception.code))
+
+    def test_a_resumed_run_keeps_its_kind(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            rows_dir, out = Path(tmp) / "rows", Path(tmp) / "student"
+            rows_dir.mkdir()
+            with mock.patch.object(make_rows, "OUT", rows_dir):
+                make_rows.write_rows({"train": [{"id": "t"}], "valid": [{"id": "v"}]}, {"prompt": CURRENT_STAMP})
+            (out / "runx/checkpoints/checkpoint-1").mkdir(parents=True)
+            _, _, rows = train_student.read_rows(rows_dir=rows_dir)
+            with mock.patch.object(train_student, "ROWS", rows_dir), mock.patch.object(train_student, "OUT", out), \
+                    mock.patch.object(label_pairs, "LOCK", Path(tmp) / "no.lock"), \
+                    mock.patch.dict(sys.modules, {"transformers": None}):
+                for kind, flags, hint in (("laya", [], "with --laya"), ("clef", ["--laya"], "without --laya"), (None, [], None)):
+                    (out / "runx/rows.json").write_text(json.dumps({**rows, "seed": 3407, **({"kind": kind} if kind else {})}))
+                    with mock.patch.object(sys, "argv", ["train_student.py", "--name", "runx", "--resume", *flags]):
+                        if hint is None:
+                            # A run from before kinds were recorded resumes as a Clef. Every check passes,
+                            # and the run stops only where it would import the trainer.
+                            with self.assertRaises(ImportError):
+                                train_student.main()
+                            continue
+                        with self.assertRaises(SystemExit) as stop:
+                            train_student.main()
+                        self.assertIn(hint, str(stop.exception.code))
+
+
+class StudentSaves(unittest.TestCase):
+    """main() with fake Unsloth classes, so each kind's loading and save order are pinned without a model."""
+
+    def run_main(self, *argv, laya=False, calls=None):
+        calls = [] if calls is None else calls
+
+        class Model:
+            decision_config = {"temperature": [1.0, 1.0, 1.0]}
+
+            def save_pretrained_merged(self, path):
+                calls.append(("merged", Path(path).name))
+
+        class Clef(Model):  # only a Clef has save_pretrained, as in Unsloth's _decision_annotate
+            is_clef = True
+
+            def save_pretrained(self, path):
+                calls.append(("adapters", Path(path).name))
+
+        class FastDecisionModel:
+            @staticmethod
+            def from_pretrained(base, **kwargs):
+                calls.append(("load", base, kwargs))
+                return (Model() if laya else Clef()), object()
+
+            get_peft_model = staticmethod(lambda model, **kwargs: model)
+            build_dataset = staticmethod(lambda rows, tokenizer, model: ([{"row": 0}], {"total": 9, "skipped": 0}))
+            predict = staticmethod(lambda model, tokenizer, state, questions: {})
+
+            @staticmethod
+            def calibrate(model, tokenizer, items):
+                calls.append(("calibrate",))
+                return {"accuracy": 1.0}
+
+        class DecisionTrainer:
+            def __init__(self, args=None, **kwargs):
+                calls.append(("batch", args.per_device_train_batch_size, args.gradient_accumulation_steps))
+
+            def train(self, resume_from_checkpoint=None):
+                calls.append(("train",))
+
+        transformers, unsloth = types.ModuleType("transformers"), types.ModuleType("unsloth")
+        transformers.TrainingArguments = lambda **kwargs: types.SimpleNamespace(**kwargs)
+        unsloth.FastDecisionModel, unsloth.DecisionTrainer = FastDecisionModel, DecisionTrainer
+        row = {"state": "s", "questions": {}}
+        with tempfile.TemporaryDirectory() as tmp:
+            rows_dir, out = Path(tmp) / "rows", Path(tmp) / "student"
+            rows_dir.mkdir()
+            with mock.patch.object(make_rows, "OUT", rows_dir):
+                make_rows.write_rows({"train": [{"id": "t", **row}], "valid": [{"id": "v", **row}]}, {"prompt": CURRENT_STAMP})
+            with mock.patch.dict(sys.modules, {"transformers": transformers, "unsloth": unsloth}), \
+                    mock.patch.object(train_student, "ROWS", rows_dir), mock.patch.object(train_student, "OUT", out), \
+                    mock.patch.object(label_pairs, "LOCK", Path(tmp) / "no.lock"), \
+                    mock.patch.object(sys, "argv", ["train_student.py", "--name", "runx", *argv]), \
+                    contextlib.redirect_stdout(io.StringIO()):
+                train_student.main()
+            return calls, json.loads((out / "runx/summary.json").read_text())
+
+    @staticmethod
+    def saves(calls):
+        return [call for call in calls if call[0] in ("adapters", "merged", "calibrate")]
+
+    def test_a_laya_run_loads_the_pinned_checkpoint_and_saves_merged_copies(self):
+        calls, summary = self.run_main("--laya", "--seed", "7", laya=True)
+        _, base, kwargs = calls[0]
+        self.assertEqual((base, kwargs["subfolder"], kwargs["revision"], kwargs["max_seq_length"], kwargs["random_state"]),
+                         (train_student.LAYA, "multilingual", train_student.LAYA_REVISION, 8192, 7))
+        self.assertEqual(self.saves(calls), [("merged", "merged-uncalibrated"), ("calibrate",), ("merged", "merged")])
+        self.assertIn(("batch", 4, 8), calls)
+        self.assertEqual((summary["kind"], summary["max_seq"], summary["seed"]), ("laya", 8192, 7))
+
+    def test_a_clef_run_saves_as_before_and_seeds_its_head(self):
+        calls, summary = self.run_main("--seed", "7")
+        _, base, kwargs = calls[0]
+        self.assertEqual((base, kwargs["revision"], kwargs["max_seq_length"], kwargs["random_state"]),
+                         (train_student.BASE, train_student.BASE_REVISION, 6144, 7))
+        self.assertEqual(self.saves(calls), [("adapters", "adapters-uncalibrated"), ("calibrate",),
+                                             ("adapters", "adapters"), ("merged", "merged")])
+        self.assertIn(("batch", 2, 4), calls)
+        self.assertEqual(summary["kind"], "clef")
+
+    def test_a_laya_checkpoint_run_as_a_clef_stops_before_training(self):
+        calls = []
+        with self.assertRaises(SystemExit) as stop:
+            self.run_main("--base", "some/laya-checkpoint", laya=True, calls=calls)
+        self.assertIn("--laya", str(stop.exception.code))
+        self.assertNotIn(("train",), calls)
+
+
+class ModelSettings(unittest.TestCase):
+    """--laya swaps the model a run trains, so its settings and folders must never leak into a Clef run's."""
+
+    @staticmethod
+    def args(**given):
+        return types.SimpleNamespace(**{"laya": False, "four_bit": False, "base": None, "revision": None,
+                                        "max_seq": None, "smoke": False, "name": "runx", **given})
+
+    def test_laya_trains_the_pinned_checkpoint_with_room_for_every_row(self):
+        settings = train_student.model_settings(self.args(laya=True))
+        self.assertEqual((settings["kind"], settings["base"], settings["subfolder"], settings["revision"]),
+                         ("laya", train_student.LAYA, "multilingual", train_student.LAYA_REVISION))
+        self.assertEqual(settings["max_seq"], 8192)
+        self.assertEqual(settings["batch"] * settings["accumulation"], 32)
+
+    def test_laya_refuses_settings_it_cant_use(self):
+        for given, hint in (({"four_bit": True}, "16-bit"), ({"base": "other/model"}, "--base"), ({"revision": "abc"}, "--base"),
+                            ({"max_seq": 8193}, "8,192")):
+            with self.assertRaises(SystemExit) as stop:
+                train_student.model_settings(self.args(laya=True, **given))
+            self.assertIn(hint, str(stop.exception.code))
+
+    def test_clef_runs_keep_their_settings(self):
+        settings = train_student.model_settings(self.args())
+        self.assertEqual((settings["kind"], settings["base"], settings["revision"], settings["max_seq"],
+                          settings["batch"], settings["accumulation"]),
+                         ("clef", train_student.BASE, train_student.BASE_REVISION, 6144, 2, 4))
+        # Another base never borrows the default base's pinned commit.
+        self.assertIsNone(train_student.model_settings(self.args(base="other/model"))["revision"])
+
+    def test_each_kind_has_its_own_smoke_folder(self):
+        self.assertEqual(train_student.run_folder(self.args(smoke=True), "laya").name, "smoke-laya")
+        self.assertEqual(train_student.run_folder(self.args(smoke=True), "clef").name, "smoke")
+        self.assertEqual(train_student.run_folder(self.args(), "laya").name, "runx")
 
 
 class StudentResults(unittest.TestCase):

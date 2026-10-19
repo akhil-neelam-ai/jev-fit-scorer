@@ -76,6 +76,16 @@ node eval/compare-versions.mjs --extra eval/private/student-run1 --extra-name st
 
 Training runs over the 16-bit base, since the merged model is 16-bit (`--four-bit` trains over a 4-bit copy instead). `make_rows.py` stops if a pair file is missing or under 95% labeled. It also stops if no test jobs are there to audit against, or if a training resume shares text with the real test resume. So do labels that don't carry today's prompt stamp, or that come from more than one teacher. Training refuses rows that don't match the manifest `make_rows.py` wrote with them. `--check-reload` fails if the saved model answers differ from the trained one by more than 0.02 in any probability. `student_eval.py` writes only under `eval/private`, and refuses to mix results from two models in one folder (`--fresh` sets the old folder aside). Training and grading refuse to start while the teacher is labeling, because both need most of the Mac's memory.
 
+`--laya` trains Laya instead of a Clef (LEARNING.md, lesson 19). Laya is the pinned `convaiinnovations/laya` checkpoint, an mmBERT encoder with a trained decision head, and LoRA goes on the encoder. It has no adapters-only save, so a run saves `merged-uncalibrated`, then the calibrated `merged`. Its limit defaults to 8,192 tokens, the encoder's own:
+
+```bash
+model/.venv-train/bin/python model/train_student.py --laya --smoke              # into model/private/student/smoke-laya
+model/.venv-train/bin/python model/student_eval.py --model model/private/student/smoke-laya/merged --check-reload
+caffeinate -is model/.venv-train/bin/python model/train_student.py --laya --name laya1
+model/.venv-train/bin/python model/student_eval.py --model model/private/student/laya1/merged
+node eval/compare-versions.mjs --extra eval/private/student-laya1 --extra-name student-laya1
+```
+
 ## Try the student from the CLI
 
 The Unsloth app serves Clef models only on NVIDIA or AMD GPUs, so on a Mac the student gets its own small server. It answers at `/v1/systemone` on `127.0.0.1`, the same path as Jev's API. Start it, wait for its "serving" line, then check it answers like the trained student, using only generated resumes, before scoring a real one:
@@ -87,4 +97,6 @@ node --import ./eval/local-endpoint.mjs cli.js --resume resume.txt --job job.txt
 ```
 
 The preload sends the CLI's request to the server instead of TypeSafe, with a placeholder key, so the real key is never read. It names the student exactly, and the server answers only to that name. It also refuses redirects, proxies, any address but `127.0.0.1`, and any answer that didn't come from a local checkpoint. On an NVIDIA or AMD machine, the Unsloth app can serve the student instead. Clone the merged folder into `~/.unsloth/studio/outputs/`, pick it under Settings > API, and point `LOCAL_DECISION_URL` and `--url` at the app. We haven't tested that route.
+
+A Laya run answers to a `laya-ft:` name, so give both clients that name: `--model laya-ft:worth-applying-laya1` for `serve_check.py`, and `LOCAL_DECISION_MODEL=laya-ft:worth-applying-laya1` for the CLI.
 

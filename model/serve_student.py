@@ -4,8 +4,10 @@ The Unsloth app serves Clef models only on NVIDIA or AMD GPUs, so it can't run t
 student on a Mac. This small server loads the student with the same Unsloth MLX code
 that graded it, and answers the CLI's request in Jev's shape. It listens on
 127.0.0.1 only, answers only JSON sent to 127.0.0.1, and answers only to the name of
-the run it serves, such as clef-ft:worth-applying-run1. eval/local-endpoint.mjs and
-model/serve_check.py send their requests here.
+the run it serves. Names look like clef-ft:worth-applying-run1, or
+laya-ft:worth-applying-laya1 for a Laya run. eval/local-endpoint.mjs and
+model/serve_check.py send their requests here. For a Laya run, give them that name
+through LOCAL_DECISION_MODEL and --model.
 
   model/.venv-train/bin/python model/serve_student.py --model model/private/student/run1/merged
 """
@@ -23,8 +25,13 @@ MAX_BODY = 2_000_000  # bytes. A resume and a long posting fit easily.
 
 
 def default_name(model_dir):
-    """The name a run's student answers to: its run folder, as clef-ft:worth-applying-<run>."""
-    return f"clef-ft:worth-applying-{Path(model_dir).resolve().parent.name}"
+    """The name a run's student answers to: its run folder, as clef-ft:worth-applying-<run>.
+
+    A Laya checkpoint holds rl_agent_config.json, and answers as laya-ft:worth-applying-<run>,
+    the way the Unsloth app names a Laya fine-tune.
+    """
+    kind = "laya" if (Path(model_dir) / "rl_agent_config.json").is_file() else "clef"
+    return f"{kind}-ft:worth-applying-{Path(model_dir).resolve().parent.name}"
 
 
 def make_handler(name, answer):
@@ -92,9 +99,11 @@ def serve(name, answer, port=PORT):
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--model", required=True, help="a student's merged or adapters folder from train_student.py")
+    ap.add_argument("--model", required=True,
+                    help="a student's merged folder from train_student.py (or a Clef's adapters folder)")
     ap.add_argument("--port", type=int, default=PORT)
-    ap.add_argument("--name", help="the model name requests must use (default: clef-ft:worth-applying-<run>)")
+    ap.add_argument("--name", help="the model name requests must use "
+                                   "(default: clef-ft:worth-applying-<run>, or laya-ft:worth-applying-<run> for Laya)")
     args = ap.parse_args()
     refuse_if_labeling()
     name = args.name or default_name(args.model)

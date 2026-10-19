@@ -106,7 +106,8 @@ def check_reload(model_dir, FastDecisionModel):
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--model", required=True, help="a student's merged or adapters folder from train_student.py")
+    ap.add_argument("--model", required=True,
+                    help="a student's merged folder from train_student.py (or a Clef's adapters folder)")
     ap.add_argument("--records", default="eval/private/lenny")
     ap.add_argument("--resume", default="eval/private/resume.txt")
     ap.add_argument("--out", help="results folder under eval/private (default: eval/private/student-<run name>)")
