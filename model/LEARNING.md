@@ -83,7 +83,7 @@ Two rules came out of the pilot. Every email and link uses example.com, so no re
 
 The Unsloth Studio app (a beta for macOS) installs its own Python setup with Unsloth and Apple's MLX library. That setup includes Unsloth's decision-model trainer for Apple Silicon. So the student can train on a 64 GB M5 Pro, with no cloud GPU.
 
-There are two ways to get a small decision model. One is to start from a model already trained for decisions, such as Laya, with 0.4 billion parameters. But Laya reads at most 1,024 tokens. Our teacher prompts ran from 2,031 to 4,796 tokens, with a median of 3,167. Laya would never see a whole resume and job posting.
+There are two ways to get a small decision model. One is to start from a model already trained for decisions, such as Laya, with 0.4 billion parameters. But Laya reads at most 1,024 tokens. Our teacher prompts ran from 2,031 to 4,796 tokens, with a median of 3,167. Laya would never see a whole resume and job posting. Lesson 19 shows that limit was only a default.
 
 The other way is to take a plain small language model and add a fresh decision head. Unsloth calls this design Clef. The head reads one prompt holding every question and scores all their options together. We'll start with Qwen3.5 2B, which is Apache 2.0. The trainer's default limit is 4,096 tokens, so we'll raise it to cover the longest prompts.
 
@@ -237,6 +237,16 @@ Next, the server had to show it answers like the model we trained. `serve_check.
 
 A made-up resume went through the CLI next. Then the real resume did, against one of the 101 test jobs. Its fit, on the 0 to 4 scale, landed within 0.1 of the graded answer for that job. The main factor matched too. The CLI sends no page link, so its prompt differs a little from the graded one. The answer took about half a second, and the resume never left the Mac.
 
+## 19. Read a model's limits from its own files
+
+Lesson 7 ruled out Laya because it "reads at most 1,024 tokens". That was wrong. Once Laya was downloaded, we could check its files. Laya is a small decision head on mmBERT-base, an encoder that reads up to 8,192 tokens. Laya was trained on 1,024-token inputs, which makes 1,024 its default. Unsloth's trainer raises it with `max_seq_length`, up to the encoder's 8,192.
+
+Our training rows fit easily once the limit is raised. Counted with Laya's own tokenizer, the resume and posting run from 476 to 3,490 tokens, with a median of 1,685. Only 108 of the 2,503 training rows fit in 1,024 tokens. All of them fit in 4,096.
+
+Laya reads questions differently from Clef. It reads each question in its own pass, with its own copy of the resume and posting. Our nine questions mean nine passes, where Clef needs one. Each question also gets 256 tokens, options included. The fit question's instructions run 263, so the end of that rubric gets cut.
+
+Size is Laya's real draw. It holds about 0.3 billion parameters, and two thirds of them are a vocabulary table for many languages. The layers that do the work hold about 0.1 billion, a twentieth of the 2B student. Nine passes eat into that, so it should need roughly half the 2B's compute per job, not a twentieth. A model this size is far easier to ship with the extension.
+
 ## Decisions so far
 
 | Decision | Why |
@@ -248,7 +258,7 @@ A made-up resume went through the CLI next. Then the real resume did, against on
 | Jobs from Trackly, about 150 for each function | Each job comes with clean tags for function, level and company stage. |
 | Resumes: 156 written by Claude Opus 5.5, plus a few hundred from ResumeAtlas (ResumeAtlas later dropped, lesson 9) | We control the mix and the rights are clean. ResumeAtlas adds real-world mess. |
 | Train on the Mac with Unsloth's MLX trainer | The Studio app ships it, and 64 GB is enough for a 2B student. |
-| First student: Qwen3.5 2B with a Clef head, trained on soft labels | It reads a whole resume and posting, and the license allows it. Laya can't fit them. |
+| First student: Qwen3.5 2B with a Clef head, trained on soft labels | It reads a whole resume and posting, and the license allows it. Laya can't fit them (wrong, lesson 19). |
 | Check generated data as a set, not only file by file | Eight writers reused the same names, which no single file revealed. |
 | Drop ResumeAtlas. Add copy-paste damage to some generated resumes instead | Its rows have no punctuation, capitals or small words, so they aren't text a user would paste. |
 | Leave out any job that shares a fifth of its text with a test job | It also drops most of the test companies' other roles, which share their boilerplate. |
@@ -274,6 +284,7 @@ A made-up resume went through the CLI next. Then the real resume did, against on
 | Calibration curve | A mapping from a model's raw scores onto the scale you care about. |
 | Cross-validation | Fitting on part of the data, scoring on the rest, then rotating. |
 | Distillation | Training a small student to copy a large teacher's answers. |
+| Encoder | A model that reads a whole text in both directions at once. It can't write text, but it suits picking from fixed options. |
 | Endpoint | The web address a program sends its requests to, such as Jev's `/v1/systemone`. |
 | Hash | A short fingerprint of some text. Change one character and the fingerprint changes. |
 | Leakage | Test data reaching the training set, which inflates the score. |
