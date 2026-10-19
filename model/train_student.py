@@ -46,6 +46,12 @@ LAYA = "convaiinnovations/laya"
 LAYA_SUBFOLDER = "multilingual"  # the variant the Unsloth app downloaded, built on mmBERT-base
 LAYA_REVISION = "7b928d828b7b0e022f929d9bd2e44165aa270148"  # the commit the app downloaded on 2026-10-18
 MAX_SKIPPED = 0.02  # share of answers the dataset builder may skip before the run stops
+# MLX settings for Laya runs. The first full run stopped after about 270 steps on Metal's limit of
+# 499,000 buffers. Laya's many short batches come in thousands of padded lengths. MLX compiles each
+# of the step's 47 functions again for every new length, and keeps every trace. It also keeps freed
+# buffers by size for reuse, and the trainer lets that cache grow to peak memory. So Laya trains
+# uncompiled, with a 4 GB cache cap. A Clef keeps the trainer's defaults, as run1 did.
+LAYA_MLX = {"compile_mode": "eager", "cache_limit_gb": 4}
 
 
 def model_settings(args):
@@ -64,11 +70,11 @@ def model_settings(args):
         if args.max_seq and args.max_seq > 8192:
             raise SystemExit("Laya's encoder reads at most 8,192 tokens, so --max-seq can't be larger.")
         return {"kind": "laya", "base": LAYA, "subfolder": LAYA_SUBFOLDER, "revision": LAYA_REVISION,
-                "max_seq": args.max_seq or 8192, "batch": 4, "accumulation": 8}
+                "max_seq": args.max_seq or 8192, "batch": 4, "accumulation": 8, "mlx": LAYA_MLX}
     base = args.base or BASE
     return {"kind": "clef", "base": base, "subfolder": None,
             "revision": args.revision or (BASE_REVISION if base == BASE else None),
-            "max_seq": args.max_seq or 6144, "batch": 2, "accumulation": 4}
+            "max_seq": args.max_seq or 6144, "batch": 2, "accumulation": 4, "mlx": {}}
 
 
 def run_folder(args, kind):
@@ -195,11 +201,10 @@ def main():
         seed=args.seed,
         report_to="none",
     )
-    if settings["kind"] == "laya":
-        # MLX keeps freed buffers by size for reuse, and without a cap the trainer lets that cache grow to peak
-        # memory. Laya's many short batches come in many lengths. The first full run hit Metal's limit of
-        # 499,000 buffers after about 270 steps. The MLX trainer reads this cap, which keeps the count far lower.
-        training_args.cache_limit_gb = 4
+    # These aren't TrainingArguments fields, so they can't go in the call above, which would raise.
+    # Unsloth copies any attribute named like one of its MLX trainer's settings into that trainer's config.
+    for name, value in settings["mlx"].items():
+        setattr(training_args, name, value)
     trainer = DecisionTrainer(
         model=model,
         processing_class=tokenizer,
@@ -207,6 +212,10 @@ def main():
         eval_dataset=valid_items,
         args=training_args,
     )
+    # A later Unsloth could stop copying them, and the run would then fail hours in. So check now.
+    for name, value in settings["mlx"].items():
+        if getattr(trainer.args, name, None) != value:
+            raise SystemExit(f"Unsloth's MLX trainer didn't receive {name} = {value!r}. Check its argument conversion.")
     trainer.train(resume_from_checkpoint=True if args.resume else None)
     # Save the trained model before calibrating, and keep that copy, so the student can also be
     # graded without calibration. A Clef saves its adapters here, so a failed merge can't lose
@@ -232,7 +241,7 @@ def main():
     (out / "summary.json").write_text(json.dumps({
         "kind": settings["kind"], "base": settings["base"], "subfolder": settings["subfolder"], "revision": settings["revision"],
         "seed": args.seed, "load_in_4bit": args.four_bit, "epochs": args.epochs, "lr": args.lr, "max_seq": settings["max_seq"],
-        "batch": settings["batch"], "accumulation": settings["accumulation"], "steps": args.steps,
+        "batch": settings["batch"], "accumulation": settings["accumulation"], "mlx": settings["mlx"], "steps": args.steps,
         "train_items": len(train_items), "valid_items": len(valid_items),
         "rows": rows,
         "metrics": metrics, "temperatures": temperatures, "minutes": round((time.time() - started) / 60, 1),

@@ -18,6 +18,8 @@ eval/private/
 model/.venv/
 model/.venv-train/
 model/private/
+# Unsloth writes generated trainer code here when imported from the repo root.
+unsloth_compiled_cache/
 
 # Python bytecode
 __pycache__/

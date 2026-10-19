@@ -693,7 +693,7 @@ class ResumedRuns(unittest.TestCase):
 class StudentSaves(unittest.TestCase):
     """main() with fake Unsloth classes, so each kind's loading and save order are pinned without a model."""
 
-    def run_main(self, *argv, laya=False, calls=None):
+    def run_main(self, *argv, laya=False, calls=None, lost_mlx=False):
         calls = [] if calls is None else calls
 
         class Model:
@@ -726,13 +726,21 @@ class StudentSaves(unittest.TestCase):
         class DecisionTrainer:
             def __init__(self, args=None, **kwargs):
                 calls.append(("batch", args.per_device_train_batch_size, args.gradient_accumulation_steps))
-                calls.append(("cache cap", getattr(args, "cache_limit_gb", None)))
+                calls.append(("mlx", getattr(args, "compile_mode", None), getattr(args, "cache_limit_gb", None)))
+                # Unsloth copies matching attributes into its MLX config. lost_mlx stands for a version that doesn't.
+                self.args = types.SimpleNamespace() if lost_mlx else args
 
             def train(self, resume_from_checkpoint=None):
                 calls.append(("train",))
 
+        def training_arguments(**kwargs):
+            # The real class is a dataclass, which raises on a field it doesn't have, as the MLX settings are.
+            if set(kwargs) & set(train_student.LAYA_MLX):
+                raise TypeError("TrainingArguments has no MLX settings")
+            return types.SimpleNamespace(**kwargs)
+
         transformers, unsloth = types.ModuleType("transformers"), types.ModuleType("unsloth")
-        transformers.TrainingArguments = lambda **kwargs: types.SimpleNamespace(**kwargs)
+        transformers.TrainingArguments = training_arguments
         unsloth.FastDecisionModel, unsloth.DecisionTrainer = FastDecisionModel, DecisionTrainer
         row = {"state": "s", "questions": {}}
         with tempfile.TemporaryDirectory() as tmp:
@@ -760,8 +768,9 @@ class StudentSaves(unittest.TestCase):
                          (train_student.LAYA, "multilingual", train_student.LAYA_REVISION, 8192, 7, False))
         self.assertEqual(self.saves(calls), [("merged", "merged-uncalibrated"), ("calibrate",), ("merged", "merged")])
         self.assertIn(("batch", 4, 8), calls)
-        self.assertIn(("cache cap", 4), calls)  # without it, a full run ran out of Metal buffers
-        self.assertEqual((summary["kind"], summary["max_seq"], summary["seed"]), ("laya", 8192, 7))
+        self.assertIn(("mlx", "eager", 4), calls)  # without them, a full run ran out of Metal buffers
+        self.assertEqual((summary["kind"], summary["max_seq"], summary["seed"], summary["mlx"]),
+                         ("laya", 8192, 7, train_student.LAYA_MLX))
         self.assertEqual(rows["kind"], "laya")  # what a later --resume checks
 
     def test_a_clef_run_saves_as_before_and_seeds_its_head(self):
@@ -773,10 +782,17 @@ class StudentSaves(unittest.TestCase):
         self.assertEqual(self.saves(calls), [("adapters", "adapters-uncalibrated"), ("calibrate",),
                                              ("adapters", "adapters"), ("merged", "merged")])
         self.assertIn(("batch", 2, 4), calls)
-        self.assertIn(("cache cap", None), calls)  # a Clef run keeps the trainer's default
+        self.assertIn(("mlx", None, None), calls)  # a Clef run keeps the trainer's defaults
         self.assertEqual((summary["kind"], summary["load_in_4bit"], rows["kind"]), ("clef", False, "clef"))
         calls, summary, _ = self.run_main("--four-bit")
         self.assertEqual((calls[0][2]["load_in_4bit"], summary["load_in_4bit"]), (True, True))
+
+    def test_mlx_settings_that_never_reach_the_trainer_stop_the_run(self):
+        calls = []
+        with self.assertRaises(SystemExit) as stop:
+            self.run_main("--laya", laya=True, calls=calls, lost_mlx=True)
+        self.assertIn("compile_mode", str(stop.exception.code))
+        self.assertNotIn(("train",), calls)
 
     def test_a_laya_checkpoint_run_as_a_clef_stops_before_training(self):
         calls = []
@@ -800,6 +816,8 @@ class ModelSettings(unittest.TestCase):
                          ("laya", train_student.LAYA, "multilingual", train_student.LAYA_REVISION))
         self.assertEqual(settings["max_seq"], 8192)
         self.assertEqual(settings["batch"] * settings["accumulation"], 32)
+        self.assertEqual(settings["mlx"], {"compile_mode": "eager", "cache_limit_gb": 4})
+        self.assertEqual(train_student.model_settings(self.args())["mlx"], {})
 
     def test_laya_refuses_settings_it_cant_use(self):
         for given, hint in (({"four_bit": True}, "16-bit"), ({"base": "other/model"}, "--base"), ({"revision": "abc"}, "--base"),
