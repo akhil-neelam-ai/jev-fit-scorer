@@ -216,6 +216,12 @@ def main():
     for name, value in settings["mlx"].items():
         if getattr(trainer.args, name, None) != value:
             raise SystemExit(f"Unsloth's MLX trainer didn't receive {name} = {value!r}. Check its argument conversion.")
+    if "cache_limit_gb" in settings["mlx"]:
+        # The trainer applies the cap only while it trains, then puts back the limit it found. Calibration
+        # scores every validation item afterwards, in as many lengths. Under the default limit, laya1's
+        # calibration ran the Mac out of memory. Set here, the cap is also the limit the trainer puts back.
+        import mlx.core as mx
+        mx.set_cache_limit(int(settings["mlx"]["cache_limit_gb"] * 1e9))
     trainer.train(resume_from_checkpoint=True if args.resume else None)
     # Save the trained model before calibrating, and keep that copy, so the student can also be
     # graded without calibration. A Clef saves its adapters here, so a failed merge can't lose

@@ -742,13 +742,16 @@ class StudentSaves(unittest.TestCase):
         transformers, unsloth = types.ModuleType("transformers"), types.ModuleType("unsloth")
         transformers.TrainingArguments = training_arguments
         unsloth.FastDecisionModel, unsloth.DecisionTrainer = FastDecisionModel, DecisionTrainer
+        mlx, mlx_core = types.ModuleType("mlx"), types.ModuleType("mlx.core")
+        mlx_core.set_cache_limit = lambda limit: calls.append(("cache limit", limit))
+        mlx.core = mlx_core
         row = {"state": "s", "questions": {}}
         with tempfile.TemporaryDirectory() as tmp:
             rows_dir, out = Path(tmp) / "rows", Path(tmp) / "student"
             rows_dir.mkdir()
             with mock.patch.object(make_rows, "OUT", rows_dir):
                 make_rows.write_rows({"train": [{"id": "t", **row}], "valid": [{"id": "v", **row}]}, {"prompt": CURRENT_STAMP})
-            with mock.patch.dict(sys.modules, {"transformers": transformers, "unsloth": unsloth}), \
+            with mock.patch.dict(sys.modules, {"transformers": transformers, "unsloth": unsloth, "mlx": mlx, "mlx.core": mlx_core}), \
                     mock.patch.object(train_student, "ROWS", rows_dir), mock.patch.object(train_student, "OUT", out), \
                     mock.patch.object(label_pairs, "LOCK", Path(tmp) / "no.lock"), \
                     mock.patch.object(sys, "argv", ["train_student.py", "--name", "runx", *argv]), \
@@ -769,6 +772,8 @@ class StudentSaves(unittest.TestCase):
         self.assertEqual(self.saves(calls), [("merged", "merged-uncalibrated"), ("calibrate",), ("merged", "merged")])
         self.assertIn(("batch", 4, 8), calls)
         self.assertIn(("mlx", "eager", 4), calls)  # without them, a full run ran out of Metal buffers
+        # The cap also holds after training, through calibration, which once ran the Mac out of memory.
+        self.assertLess(calls.index(("cache limit", 4e9)), calls.index(("train",)))
         self.assertEqual((summary["kind"], summary["max_seq"], summary["seed"], summary["mlx"]),
                          ("laya", 8192, 7, train_student.LAYA_MLX))
         self.assertEqual(rows["kind"], "laya")  # what a later --resume checks
@@ -783,6 +788,7 @@ class StudentSaves(unittest.TestCase):
                                              ("adapters", "adapters"), ("merged", "merged")])
         self.assertIn(("batch", 2, 4), calls)
         self.assertIn(("mlx", None, None), calls)  # a Clef run keeps the trainer's defaults
+        self.assertFalse([call for call in calls if call[0] == "cache limit"])
         self.assertEqual((summary["kind"], summary["load_in_4bit"], rows["kind"]), ("clef", False, "clef"))
         calls, summary, _ = self.run_main("--four-bit")
         self.assertEqual((calls[0][2]["load_in_4bit"], summary["load_in_4bit"]), (True, True))
