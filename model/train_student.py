@@ -228,15 +228,23 @@ def main():
     # the run. Laya has no adapters-only save, so its copy is merged (about 0.6 GB), and the
     # trainable weights in its last checkpoint are the fallback.
     laya = settings["kind"] == "laya"
+
+    def save_merged(name):
+        # A resumed run saves again. Unsloth copies the tokenizer from the read-only Hugging Face
+        # cache, so it can't write over an earlier copy. The checkpoint holds the weights, so start clean.
+        if laya and (out / name).exists():
+            shutil.rmtree(out / name)
+        model.save_pretrained_merged(str(out / name))
+
     if laya:
-        model.save_pretrained_merged(str(out / "merged-uncalibrated"))
+        save_merged("merged-uncalibrated")
     else:
         model.save_pretrained(str(out / "adapters-uncalibrated"))
     metrics = FastDecisionModel.calibrate(model, tokenizer, valid_items)
     print("held-out metrics after calibration:", json.dumps(metrics, default=str), flush=True)
     if not laya:
         model.save_pretrained(str(out / "adapters"))
-    model.save_pretrained_merged(str(out / "merged"))
+    save_merged("merged")
     # Calibration fits temperatures on the validation rows, so record them for the grade.
     temperatures = {k: v for k, v in getattr(model, "decision_config", {}).items() if "temperature" in k}
     # A few validation answers from the model in memory, with their inputs, for student_eval.py --check-reload.
