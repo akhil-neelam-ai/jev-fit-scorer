@@ -693,7 +693,7 @@ class ResumedRuns(unittest.TestCase):
 class StudentSaves(unittest.TestCase):
     """main() with fake Unsloth classes, so each kind's loading and save order are pinned without a model."""
 
-    def run_main(self, *argv, laya=False, calls=None, lost_mlx=False):
+    def run_main(self, *argv, laya=False, calls=None, lost_mlx=False, saved_before=()):
         calls = [] if calls is None else calls
 
         class Model:
@@ -701,6 +701,8 @@ class StudentSaves(unittest.TestCase):
 
             def save_pretrained_merged(self, path):
                 calls.append(("merged", Path(path).name))
+                if (Path(path) / "old").exists():
+                    calls.append(("kept", Path(path).name))
 
         class Clef(Model):  # only a Clef has save_pretrained, as in Unsloth's _decision_annotate
             is_clef = True
@@ -749,6 +751,8 @@ class StudentSaves(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             rows_dir, out = Path(tmp) / "rows", Path(tmp) / "student"
             rows_dir.mkdir()
+            for name in saved_before:  # what an earlier attempt at this run left behind
+                (out / name / "old").mkdir(parents=True)
             with mock.patch.object(make_rows, "OUT", rows_dir):
                 make_rows.write_rows({"train": [{"id": "t", **row}], "valid": [{"id": "v", **row}]}, {"prompt": CURRENT_STAMP})
             with mock.patch.dict(sys.modules, {"transformers": transformers, "unsloth": unsloth, "mlx": mlx, "mlx.core": mlx_core}), \
@@ -792,6 +796,16 @@ class StudentSaves(unittest.TestCase):
         self.assertEqual((summary["kind"], summary["load_in_4bit"], rows["kind"]), ("clef", False, "clef"))
         calls, summary, _ = self.run_main("--four-bit")
         self.assertEqual((calls[0][2]["load_in_4bit"], summary["load_in_4bit"]), (True, True))
+
+    def test_a_resumed_laya_run_replaces_its_merged_copies_and_a_clef_run_keeps_them(self):
+        # Unsloth can't write over the read-only tokenizer an earlier Laya save copied in, so a Laya save starts clean.
+        earlier = ("runx/checkpoints/checkpoint-1", "runx/merged-uncalibrated", "runx/merged")
+        calls, _, _ = self.run_main("--laya", "--resume", laya=True, saved_before=earlier)
+        self.assertEqual(self.saves(calls), [("merged", "merged-uncalibrated"), ("calibrate",), ("merged", "merged")])
+        self.assertFalse([call for call in calls if call[0] == "kept"])
+        # Clef saves have never needed it, so a Clef run deletes nothing.
+        calls, _, _ = self.run_main("--resume", saved_before=earlier)
+        self.assertIn(("kept", "merged"), calls)
 
     def test_mlx_settings_that_never_reach_the_trainer_stop_the_run(self):
         calls = []

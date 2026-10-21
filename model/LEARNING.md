@@ -247,6 +247,31 @@ Laya reads questions differently from Clef. It reads each question in its own pa
 
 Size is Laya's real draw. It holds about 0.3 billion parameters, and two thirds of them are a vocabulary table for many languages. The layers that do the work hold about 0.1 billion, a twentieth of the 2B student. Nine passes eat into that, so it should need roughly half the 2B's compute per job, not a twentieth. A model this size is far easier to ship with the extension.
 
+## 20. A smaller model that didn't learn enough
+
+Laya trained for 1,326 steps over 2 epochs. That took about 11 hours of clock time, restarts included, against 4.6 for the 2B student. It saw the same rows as the 2B. Then it took the same test on the 101 jobs.
+
+| | Mean gap from Lenny | Rank agreement | Within 1 point |
+|---|---|---|---|
+| Jev | 0.59 | 0.83 | 93 of 101 |
+| Student, Qwen3.5 2B | 0.62 | 0.82 | 92 of 101 |
+| Student, Laya | 1.24 | 0.02 | 61 of 101 |
+
+A rank agreement of 0.02 means Laya's order of the jobs has nothing to do with Lenny's. Its fit scores barely moved from job to job. Their spread was 0.20 points, where the 2B's was 0.62. A model that gives every job about the same score lands near the middle of the scale, so it still gets 61 jobs within a point.
+
+The pipeline wasn't to blame. The reloaded model answered within 0.002 of the model right after training, and the 2B went through the same code and rows. Laya simply learned less. On held-out rows it picked the teacher's top answer 70% of the time, where the 2B picked it 87.5%.
+
+The likely cause is how little of Laya we trained. Unsloth's Mac trainer freezes the encoder, the part that reads the resume and posting. It trains the head plus small LoRA weights added to the encoder. The 2B trained with LoRA too. But its working layers are twenty times larger, so the same small add-on had far more to steer. A full fine-tune would train every weight. It's untested here and would run for 10 hours or more.
+
+The run also hit two memory traps on the Mac's GPU.
+
+- **Too many buffers.** By default, MLX compiles each training step into a faster form. It keeps one compiled copy for every input length it sees, and our rows vary in length. The copies piled up until Metal hit its limit of 499,000 buffers, around step 270. Turning compiling off fixed it. Steps then took about 25 seconds, where compiled steps took 30 to 55. Compiling only pays off when inputs repeat their shape.
+- **A limit that ended too early.** The trainer caps its memory cache only while it trains. Then it restores the old setting. Calibration runs after training, so it ran without the cap and the Mac ran low on memory. Claude Code stopped the run to protect the Mac. The fix sets the cap for the whole script, before training starts.
+
+A third problem came on the restart. Saving the merged model a second time failed, because Unsloth had copied a read-only tokenizer file into the folder. A Laya save now clears its folder first. The checkpoint still holds the trained weights, so nothing is lost.
+
+So Laya is out for now. The 2B stays the student to beat, and the next run checks that its result holds up.
+
 ## Decisions so far
 
 | Decision | Why |
@@ -274,6 +299,8 @@ Size is Laya's real draw. It holds about 0.3 billion parameters, and two thirds 
 | Serve the student from our own small server on the Mac | The Unsloth app serves Clef models only on NVIDIA or AMD GPUs. |
 | Name the student exactly in every request | In the app, "jev-latest" means the default model, which can be hosted. A check on the answer comes after the resume has gone. |
 | Check the server on generated resumes before the real one | A wrong or drifted model shows up before any private text is sent. |
+| Train Laya with compiling turned off, and cap the GPU cache for the whole script | Compiled steps kept one copy per input length and crashed the GPU. The trainer's own cap ended before calibration. |
+| Drop Laya for now | It graded 1.24, twice Jev's gap, with no sense of which jobs fit better. A full fine-tune is untested and would take 10 hours or more. |
 
 ## Words we've used
 
@@ -284,6 +311,7 @@ Size is Laya's real draw. It holds about 0.3 billion parameters, and two thirds 
 | Calibration curve | A mapping from a model's raw scores onto the scale you care about. |
 | Cross-validation | Fitting on part of the data, scoring on the rest, then rotating. |
 | Distillation | Training a small student to copy a large teacher's answers. |
+| Compile | Turning a model's steps into one faster program before running it. It pays off when inputs keep the same shape. |
 | Encoder | A model that reads a whole text in both directions at once. It can't write text, but it suits picking from fixed options. |
 | Endpoint | The web address a program sends its requests to, such as Jev's `/v1/systemone`. |
 | Hash | A short fingerprint of some text. Change one character and the fingerprint changes. |
@@ -296,12 +324,13 @@ Size is Laya's real draw. It holds about 0.3 billion parameters, and two thirds 
 | 4-bit quantization | Storing each weight in 4 bits instead of 16. A 27B model then fits in about 16 GB, with a small loss in quality. |
 | Seed | The starting number for a random generator. The same seed gives the same "random" list every run. |
 | Soft labels | Training targets that are full probabilities, such as 58% and 40%, instead of one right answer. |
+| Underfitting | A model that learned too little, so its answers stay close to an average. |
 | Token | The unit a model reads, about three quarters of an English word. |
 | Validation set | Rows held back from training, to check the model on work it hasn't seen. |
 
 ## Next
 
-The first student is trained and graded: 0.62 against Jev's 0.59, within the test's noise (lesson 17). It has also scored a real resume from the CLI, and the resume never left the Mac (lesson 18).
+The first student is trained and graded: 0.62 against Jev's 0.59, within the test's noise (lesson 17). It has also scored a real resume from the CLI, and the resume never left the Mac (lesson 18). Laya, the smaller option, graded 1.24 and is out for now (lesson 20).
 
-1. Train a second student with a different seed, about 4.6 hours, to confirm the first wasn't luck.
+1. Train a second 2B student with a different seed, about 4.6 hours, to confirm the first wasn't luck.
 2. If it agrees, plan how a local option could ship.
